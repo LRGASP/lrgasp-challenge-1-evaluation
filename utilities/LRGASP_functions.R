@@ -46,6 +46,11 @@ mean_cov_novel=function(X , sqanti_data_junc){
   mean(novel_SJ$total_coverage)
 }
 
+mean_cov_known=function(X , sqanti_data_junc){
+  known_SJ=sqanti_data_junc[which(sqanti_data_junc$isoform==as.character(X["isoform"]) & sqanti_data_junc$junction_category=="known"),]
+  mean(known_SJ$total_coverage)
+}
+
 mean_cov_all=function(X, sqanti_data_junc){
   all_SJ=sqanti_data_junc[which(sqanti_data_junc$isoform==X["isoform"]),]
   mean(all_SJ$total_coverage)
@@ -56,23 +61,31 @@ SJ_wo_cov=function(X, sqanti_data_junc ){
   length(which(all_SJ$total_coverage==0))
 }
 
+SJ_w_cov_perc=function(X){
+  if (as.integer(X["exons"])!=0){
+  (1-(as.integer(X["SJ_wo_cov"])/(as.integer(X["exons"])-1)))*100
+  }else{0}
+}
+
 novel_SJ_isof=function(X, sqanti_data_junc ){
   all_SJ=sqanti_data_junc[which(sqanti_data_junc$isoform==X["isoform"]),]
   as.integer(length(which(all_SJ$junction_category=="novel")))
 }
 
-novel_SJ_isof_perc=function(X, sqanti_data_junc = sqanti_data_junc){
+novel_SJ_isof_perc=function(X, sqanti_data_junc ){
   all_SJ=sqanti_data_junc[which(sqanti_data_junc$isoform==X["isoform"]),]
   as.integer(length(which(all_SJ$junction_category=="novel")))*100/dim(all_SJ)[1]
 }
 
-non_canonical_SJ=function(X, sqanti_data_junc = sqanti_data_junc){
+non_canonical_SJ=function(X, sqanti_data_junc ){
   all_SJ=sqanti_data_junc[which(sqanti_data_junc$isoform==X["isoform"]),]
   as.integer(length(which(all_SJ$canonical=="non_canonical")))
 }
 
 allTP_function_novel=function(X){
-  return(as.logical((abs(as.integer(X["diff_to_gene_TSS"]))<=50) | X["within_cage_peak"]=="True") & (as.logical(abs(as.integer(X["diff_to_gene_TTS"]))<=50) | !is.na(X["polyA_motif"])))
+  return(as.logical((abs(as.integer(X["diff_to_gene_TSS"]))<=50) | X["within_cage_peak"]=="True") &
+           (as.logical(abs(as.integer(X["diff_to_gene_TTS"]))<=50) | !is.na(X["polyA_motif"])) &
+           (as.logical(as.integer(X["min_cov"])>0)))
 }
 
 distancias <- function (CLASS, category, dist) {
@@ -121,50 +134,9 @@ distancias <- function (CLASS, category, dist) {
           main = paste("% Perfect reference match", "\n", category, "\n",type.dist))
 }
 
-library(scales)
-
-
-### New functions Fran
-
-chaining_ISM <- function(x){
-  sj=sqanti_data_junc[which(sqanti_data_junc$isoform==x["isoform"]),]
-}
-
-f.mean_cov_novel=function(X, Y){
-  novel_SJ=Y[which(Y$isoform==X["isoform"] & Y$junction_category=="novel"),"total_coverage"]
-  mean(novel_SJ)
-}
-
-f.mean_cov_all=function(X, Y){
-  all_SJ=Y[which(Y$isoform==X["isoform"]),]
-  mean(all_SJ$total_coverage)
-}
-
-f.SJ_wo_cov=function(X, Y){
-  all_SJ=Y[which(Y$isoform==X["isoform"]),]
-  length(which(all_SJ$total_coverage==0))
-}
-
-f.novel_SJ_isof=function(X,Y){
-  all_SJ=Y[which(Y$isoform==X["isoform"]),]
-  as.integer(length(which(all_SJ$junction_category=="novel")))
-}
-
-f.novel_SJ_isof_perc=function(X,Y){
-  all_SJ=Y[which(Y$isoform==X["isoform"]),]
-  as.integer(length(which(all_SJ$junction_category=="novel")))*100/dim(all_SJ)[1]
-}
-
-f.non_canonical_SJ=function(X,Y){
-  all_SJ=Y[which(Y$isoform==X["isoform"]),]
-  as.integer(length(which(all_SJ$canonical=="non_canonical")))
-}
-
-f.allTP_function_novel=function(X){
-  return(as.logical((abs(as.integer(X["diff_to_gene_TSS"]))<=50) | X["within_cage_peak"]=="True") & (as.logical(abs(as.integer(X["diff_to_gene_TTS"]))<=50) | !is.na(X["polyA_motif"])))
-}
-
-### new functions
 missing_exons_function=function(X){
   as.integer(X["ref_exons"]) - as.integer(X["exons"])
 }
+
+
+

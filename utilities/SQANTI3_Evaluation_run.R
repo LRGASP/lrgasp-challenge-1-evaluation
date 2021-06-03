@@ -24,13 +24,13 @@ report.file <- paste(report.prefix, "Evaluation_report.html", sep="_");
 
 #********************** Packages (install if not found)
 
-list_of_packages <- c("ggplot2", "scales", "kableExtra","rmarkdown")
+list_of_packages <- c("ggplot2", "scales", "knitr","rmarkdown")
 req_packages <- list_of_packages[!(list_of_packages %in% installed.packages()[,"Package"])]
 if(length(req_packages)) install.packages(req_packages, repo="http://cran.rstudio.com/")
 
 library(ggplot2)
 library(scales)
-library(kableExtra)
+library(knitr)
 library(rmarkdown)
 
 
