@@ -405,7 +405,7 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, platform,
   
   genes_df=aggregate(sqanti_data$isoform, by = list("associatedGene" = sqanti_data$associated_gene, "novelGene" = sqanti_data$novelGene), length)
   
-  f.global_results=data.frame(row.names = c("Number of genes detected", "Number of genes associated to a known one",
+  f.global_results=data.frame(row.names = c("Number of genes detected", "Number of known genes detected",
                                             "Number of transcripts detected", "Number of transcripts associated to a known gene",
                                             "Number of unique SJ detected"))
   g.global_results=data.frame(row.names = c("Novel SJ", "Non-canonical SJ"))
