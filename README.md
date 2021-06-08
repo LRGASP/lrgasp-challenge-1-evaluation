@@ -1,10 +1,11 @@
 # Challenge 1 Evaluation
 
-The evaluation of submitted transcript models will be done using [SQANTI3](https://github.com/ConesaLab/SQANTI3) descriptors and number of LRGASP-agreed evaluation metrics. The general procedure to assess these evaluation metrics on your data is to run **sqanti3_lrgasp.py**, an adapted version of the original code that will generate automatically an HTML report with the results of the evaluation. Please, download/clone the entire [sqanti3_evaluation](https://github.com/LRGASP/lrgasp-submissions/tree/fran/bin/sqanti3_evaluation) directory, including the **utilities** subfolder.
+The evaluation of submitted transcript models will be done using [SQANTI3](https://github.com/ConesaLab/SQANTI3) descriptors and number of LRGASP-agreed evaluation metrics. The general procedure to assess these evaluation metrics on your data is to run **sqanti3_lrgasp.py**, an adapted version of the original code that will generate automatically an HTML report with the results of the evaluation. Please, download/clone the entire [sqanti3_evaluation](https://github.com/LRGASP/lrgasp-challenge-1-evaluation.git) directory, including the **utilities** subfolder.
 
 ## Setting up the environment
 
-In order to install all the dependencies needed by **sqanti3_lrgasp.py**, please use the [YML](https://github.com/LRGASP/lrgasp-submissions/tree/fran/bin/sqanti3_evaluation/sqanti3_lrgasp.yml) file to build a conda environment. 
+In order to install all the dependencies needed by **sqanti3_lrgasp.py**, please use the [YML](https://github.com/LRGASP/lrgasp-challenge-1-evaluation/blob/main/sqanti3_lrgasp.yml) file to build a conda environment. 
+
 ```
 conda env create -f sqanti3_lrgasp.yml
 source activate sqanti3_lrgasp
@@ -27,19 +28,19 @@ Remember to activate the *sqanti3_lrgasp* environment and setting up the `PYTHON
 
 ## Run SQANTI3
 
-When running [SQANTI3](https://github.com/ConesaLab/SQANTI3), your transcript-models will be compared against the GENCODE annotation using the last version available of the reference genome. We highly recommend to use the mouse and human genome annotation files available at the [LRGASP submission github](https://github.com/LRGASP/lrgasp-submissions/blob/master/docs/reference-genomes.md), as they already include the spike-ins information (SIRVs and ERCC). If you are going to submit also expression values for your transcript-models, just use the `--expression` option when running **sqanti3_lrgasp.py** and include your quantification results in .tsv format.
+When running [SQANTI3](https://github.com/ConesaLab/SQANTI3), your transcript-models will be compared against the GENCODE annotation using the last version available of the reference genome. We highly recommend to use the mouse and human genome annotation files available at the [LRGASP submission github](https://github.com/LRGASP/lrgasp-submissions/blob/master/docs/reference-genomes.md), as they already include the spike-ins information (SIRVs and ERCC).
 
 LRGASP will be using CAGE peak data, polyA motif list and Illumina junction coverage to evaluate your transcript models using SQANTI3. We therefore recommend you run **sqanti3_lrgasp.py** enabling these analyses. To do so:
 
--   **CAGE peak data**:  Download BED files of CAGE peak data for [human](https://github.com/LRGASP/lrgasp-submissions/tree/fran/bin/sqanti3_evaluation/utilities/refTSS.human.bed) and [mouse](https://github.com/LRGASP/lrgasp-submissions/tree/fran/bin/sqanti3_evaluation/utilities/refTSS.mouse.bed) and provide them to **sqanti3_lrgasp.py** using the `--cage_peak` option
--   **polyA motif list**: This is a TXT file with the most common polyA motifs for human and mouse that can be downloaded from [here](https://github.com/LRGASP/lrgasp-submissions/tree/fran/bin/sqanti3_evaluation/utilities/polyA_list.txt). Include this file when running **sqanti3_qc.py** using the `--polyA_motif_list` option.
+-   **CAGE peak data**:  Download BED files of CAGE peak data for [human](https://github.com/LRGASP/lrgasp-challenge-1-evaluation/blob/main/utilities/refTSS.human.bed) and [mouse](https://github.com/LRGASP/lrgasp-challenge-1-evaluation/blob/main/utilities/refTSS.mouse.bed) and provide them to **sqanti3_lrgasp.py** using the `--cage_peak` option
+-   **polyA motif list**: This is a TXT file with the most common polyA motifs for human and mouse that can be downloaded from [here](https://github.com/LRGASP/lrgasp-challenge-1-evaluation/blob/main/utilities/polyA_list.txt). Include this file when running **sqanti3_qc.py** using the `--polyA_motif_list` option.
 -   **SJ coverage**:  As SJ information is dependent on the sample being analyzed, it is necessary to run previously STAR to map the Illumina reads against the genome and identify possible splice-junctions using the `--twopassMode`. Then, the resulting _*SJ.oyut.tab_ file can be input to **sqanti3_lrgasp.py** with the parameter `-c`. This is an example of how we normally run STAR for this SJ detection:
 
 ```
 STAR --runThreadN 8 --genomeDir <star_index> --readFilesIn <read1> <read2> --outFileNamePrefix <output_prefix> --alignSJoverhangMin 8  --alignSJDBoverhangMin 1 --outFilterType BySJout --outSAMunmapped Within --outFilterMultimapNmax 20 --outFilterMismatchNoverLmax 0.04 --outFilterMismatchNmax 999 --alignIntronMin 20 --alignIntronMax 1000000 --alignMatesGapMax 1000000 --sjdbScore 1 --genomeLoad NoSharedMemory --outSAMtype BAM SortedByCoordinate --twopassMode Basic
 ```
 
-It will also be **required** to activate the `--gtf`option and also set up two extra arguments that were not included in the normal SQANTI3 script:
+It will also be **required** to activate the `--gtf` option and also set up two extra arguments that were not included in the normal SQANTI3 script:
  - `--name`:  Name or ID of your submission.
  - `--platform`: Sequencing platform used for building the submitted transcriptome (PacBio, ONT, kitchen_sink). 
 
