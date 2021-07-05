@@ -4,8 +4,8 @@
 # Modified by Liz (etseng@pacb.com) as SQANTI2/3 versions
 # Modified by Fran (francisco.pardo.palacios@gmail.com) currently as SQANTI3 version (05/15/2020)
 
-__author__  = "etseng@pacb.com"
-__version__ = '2.0.0'  # Python 3.7
+__author__  = "francisco.pardo.palacios@gmail.com"
+__version__ = 'LRGASP_v1.1'  # Python 3.7
 
 import pdb
 import os, re, sys, subprocess, timeit, glob, copy
@@ -117,7 +117,7 @@ FIELDS_CLASS = ['isoform', 'chrom', 'strand', 'length',  'exons',  'structural_c
                 'perc_A_downstream_TTS', 'seq_A_downstream_TTS',
                 'dist_to_cage_peak', 'within_cage_peak', 'pos_cage_peak',
                 'dist_to_polya_site', 'within_polya_site',
-                'polyA_motif', 'polyA_dist', 'ORF_seq']
+                'polyA_motif', 'polyA_dist', 'ORF_seq', 'TSS_genomic_coord', 'TTS_genomic_coord']
 
 RSCRIPTPATH = distutils.spawn.find_executable('Rscript')
 RSCRIPT_REPORT = 'SQANTI3_Evaluation_run.R'
@@ -228,7 +228,8 @@ class myQueryTranscripts:
                  FSM_class = None, percAdownTTS = None, seqAdownTTS=None,
                  dist_cage='NA', within_cage='NA', pos_cage_peak='NA',
                  dist_polya_site='NA', within_polya_site='NA',
-                 polyA_motif='NA', polyA_dist='NA'):
+                 polyA_motif='NA', polyA_dist='NA',
+                 TSS_genomic_coord='NA', TTS_genomic_coord='NA' ):
 
         self.id  = id
         self.tss_diff    = tss_diff   # distance to TSS of best matching ref
@@ -282,6 +283,9 @@ class myQueryTranscripts:
         self.dist_polya_site   = dist_polya_site    # distance to the closest polyA site (--polyA_peak, BEF file)
         self.polyA_motif = polyA_motif
         self.polyA_dist  = polyA_dist               # distance to the closest polyA motif (--polyA_motif_list, 6mer motif list)
+        self.TSS_genomic_coord = TSS_genomic_coord  # genomic coordinates of TSS
+        self.TTS_genomic_coord = TTS_genomic_coord  # genomic coordinates of TTS
+
 
     def get_total_diff(self):
         return abs(self.tss_diff)+abs(self.tts_diff)
@@ -333,7 +337,7 @@ class myQueryTranscripts:
                                                                                                                                                            str(self.dist_polya_site),
                                                                                                                                                            str(self.within_polya_site),
                                                                                                                                                            str(self.polyA_motif),
-                                                                                                                                                           str(self.polyA_dist))
+                                                                                                                                                           str(self.polyA_dist), str(self.TSS_genomic_coord), str(self.TTS_genomic_coord))
 
 
     def as_dict(self):
@@ -383,7 +387,9 @@ class myQueryTranscripts:
          'dist_to_polya_site': self.dist_polya_site,
          'within_polya_site': self.within_polya_site,
          'polyA_motif': self.polyA_motif,
-         'polyA_dist': self.polyA_dist
+         'polyA_dist': self.polyA_dist,
+         'TSS_genomic_coord': self.TSS_genomic_coord,
+         'TTS_genomic_coord': self.TTS_genomic_coord
          }
         for sample,count in self.FL_dict.items():
             d["FL."+sample] = count
@@ -815,6 +821,17 @@ def expression_parser(expressionFile):
         exp_dict=exp_all
         return exp_dict
 
+def get_TSS_TTS_coordinates(trec):
+    """
+    Get TSS genomic coordinate
+    """
+    if trec.strand == '+':
+        tss = trec.txStart
+        tts = trec.txEnd
+    else:
+        tss = trec.txEnd
+        tts = trec.txStart
+    return(tss, tts)
 
 def transcriptsKnownSpliceSites(refs_1exon_by_chr, refs_exons_by_chr, start_ends_by_gene, trec, genome_dict, nPolyA):
     """
@@ -1506,6 +1523,7 @@ def isoformClassification(args, isoforms_by_chr, refs_1exon_by_chr, refs_exons_b
         for rec in records:
             # Find best reference hit
             isoform_hit = transcriptsKnownSpliceSites(refs_1exon_by_chr, refs_exons_by_chr, start_ends_by_gene, rec, genome_dict, nPolyA=args.window)
+            isoform_hit.TSS_genomic_coord, isoform_hit.TTS_genomic_coord = get_TSS_TTS_coordinates(rec)
 
             if isoform_hit.str_class in ("anyKnownJunction", "anyKnownSpliceSite"):
                 # not FSM or ISM --> see if it is NIC, NNC, or fusion
