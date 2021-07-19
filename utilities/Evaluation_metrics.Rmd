@@ -225,7 +225,7 @@ The following metrics and definitions apply to SIRV transcripts:
 - **False Discovery Rate:**	(SIRV_transcripts - RM)/SIRV_transcripts
 - **Redundancy:**	(FSM + ISM)/unique(TP+PTP)
 
-**ATTENTION**
+**ATENTION**
 If in this chunk of the evaluation all the results are 0, please, check if the reference genome and/or transcriptome used for building your transcript-model  contain information about spike-ins.
 
 
