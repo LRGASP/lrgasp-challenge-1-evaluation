@@ -36,8 +36,16 @@ LRGASP will be using CAGE peak data, polyA motif list and Illumina junction cove
 -   **polyA motif list**: This is a TXT file with the most common polyA motifs for human and mouse that can be downloaded from [here](https://github.com/LRGASP/lrgasp-challenge-1-evaluation/blob/main/utilities/polyA_list.txt). Include this file when running **sqanti3_qc.py** using the `--polyA_motif_list` option.
 -   **SJ coverage**:  As SJ information is dependent on the sample being analyzed, it is necessary to run previously STAR to map the Illumina reads against the genome and identify possible splice-junctions using the `--twopassMode`. Then, the resulting _*SJ.oyut.tab_ file can be input to **sqanti3_lrgasp.py** with the parameter `-c`. This is an example of how we normally run STAR for this SJ detection:
 
+1. Create a genome index with STAR without providing the reference annotation. We don't want to bias the SJ-detection towards the annotated splice sites.
+
 ```
-STAR --runThreadN 8 --genomeDir <star_index> --readFilesIn <read1> <read2> --outFileNamePrefix <output_prefix> --alignSJoverhangMin 8  --alignSJDBoverhangMin 1 --outFilterType BySJout --outSAMunmapped Within --outFilterMultimapNmax 20 --outFilterMismatchNoverLmax 0.04 --outFilterMismatchNmax 999 --alignIntronMin 20 --alignIntronMax 1000000 --alignMatesGapMax 1000000 --sjdbScore 1 --genomeLoad NoSharedMemory --outSAMtype BAM SortedByCoordinate --twopassMode Basic
+STAR --runThreadN <num_threads> --runMode genomeGenerate --genomeDir <star_index> --genomeFastaFiles <reference_genome_FASTA> --outTmpDir <index_dir_tmp> 
+```
+
+2. Map short-reads using `--twopassMode`
+
+```
+STAR --runThreadN <num_threads> --genomeDir <star_index> --readFilesIn <read1> <read2> --outFileNamePrefix <output_prefix> --alignSJoverhangMin 8  --alignSJDBoverhangMin 1 --outFilterType BySJout --outSAMunmapped Within --outFilterMultimapNmax 20 --outFilterMismatchNoverLmax 0.04 --outFilterMismatchNmax 999 --alignIntronMin 20 --alignIntronMax 1000000 --alignMatesGapMax 1000000 --sjdbScore 1 --genomeLoad NoSharedMemory --outSAMtype BAM SortedByCoordinate --twopassMode Basic
 ```
 
 It will also be **required** to activate the `--gtf` option and also set up two extra arguments that were not included in the normal SQANTI3 script:
