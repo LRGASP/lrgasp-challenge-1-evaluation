@@ -2,7 +2,7 @@
 # SQANTI: Structural and Quality Annotation of Novel Transcript Isoforms
 # Authors: Lorena de la Fuente, Hector del Risco, Cecile Pereira and Manuel Tardaguila
 # Modified by Liz (etseng@pacb.com) as SQANTI2/3 versions
-# Modified by Fran (francisco.pardo.palacios@gmail.com) currently as SQANTI3 version (05/15/2020)
+# Modified by Fran (francisco.pardo.palacios@gmail.com) currently as SQANTI3 LRGASP challenge 1 version (07/21/2021)
 
 __author__  = "francisco.pardo.palacios@gmail.com"
 __version__ = 'LRGASP_v1.1'  # Python 3.7
@@ -26,7 +26,7 @@ utilitiesPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "utili
 sys.path.insert(0, utilitiesPath)
 from rt_switching import rts
 from indels_annot import calc_indels_from_sam
-
+from experiment_json_parser import json_parser, get_libraries_metadata
 
 try:
     from Bio.Seq import Seq
@@ -75,9 +75,9 @@ if v1 < 8 or v2 < 6:
     sys.exit(-1)
 
 
-GMAP_CMD = "gmap --cross-species -n 1 --max-intronlength-middle=2000000 --max-intronlength-ends=2000000 -L 3000000 -f samse -t {cpus} -D {dir} -d {name} -z {sense} {i} > {o}"
+GMAP_CMD = "gmap --cross-species -n 1 --max-intronlength-middle=2000000 --max-intronlength-ends=2000000 -L 3000000 -f samse -t {cpus} -D {dir} -d {name} -z {sense} {i} | samtools view  -F2048 -h > {o}"
 #MINIMAP2_CMD = "minimap2 -ax splice --secondary=no -C5 -O6,24 -B4 -u{sense} -t {cpus} {g} {i} > {o}"
-MINIMAP2_CMD = "minimap2 -ax splice --secondary=no -C5 -u{sense} -t {cpus} {g} {i} > {o}"
+MINIMAP2_CMD = "minimap2 -ax splice --secondary=no -C5 -u{sense} -t {cpus} {g} {i} |  samtools view  -F2048 -h > {o}"
 DESALT_CMD = "deSALT aln {dir} {i} -t {cpus} -x ccs -o {o}"
 
 GMSP_PROG = os.path.join(utilitiesPath, "gmst", "gmst.pl")
@@ -117,7 +117,8 @@ FIELDS_CLASS = ['isoform', 'chrom', 'strand', 'length',  'exons',  'structural_c
                 'perc_A_downstream_TTS', 'seq_A_downstream_TTS',
                 'dist_to_cage_peak', 'within_cage_peak', 'pos_cage_peak',
                 'dist_to_polya_site', 'within_polya_site',
-                'polyA_motif', 'polyA_dist', 'ORF_seq', 'TSS_genomic_coord', 'TTS_genomic_coord']
+                'polyA_motif', 'polyA_dist', 'ORF_seq', 'TSS_genomic_coord', 'TTS_genomic_coord',
+                'experiment_id', 'data_category', 'sample_id', 'library_prep', 'platform', 'software', 'challenge_id']
 
 RSCRIPTPATH = distutils.spawn.find_executable('Rscript')
 RSCRIPT_REPORT = 'SQANTI3_Evaluation_run.R'
@@ -229,7 +230,9 @@ class myQueryTranscripts:
                  dist_cage='NA', within_cage='NA', pos_cage_peak='NA',
                  dist_polya_site='NA', within_polya_site='NA',
                  polyA_motif='NA', polyA_dist='NA',
-                 TSS_genomic_coord='NA', TTS_genomic_coord='NA' ):
+                 TSS_genomic_coord='NA', TTS_genomic_coord='NA',
+                 experiment_id='NA', data_category='NA', sample_id='NA',
+                 library_prep='NA', platform='NA', software='NA', challenge_id='NA'):
 
         self.id  = id
         self.tss_diff    = tss_diff   # distance to TSS of best matching ref
@@ -285,8 +288,13 @@ class myQueryTranscripts:
         self.polyA_dist  = polyA_dist               # distance to the closest polyA motif (--polyA_motif_list, 6mer motif list)
         self.TSS_genomic_coord = TSS_genomic_coord  # genomic coordinates of TSS
         self.TTS_genomic_coord = TTS_genomic_coord  # genomic coordinates of TTS
-
-
+        self.experiment_id = experiment_id
+        self.data_category = data_category
+        self.sample_id = sample_id
+        self.library_prep = library_prep
+        self.platform = platform
+        self.software = software
+        self.challenge_id = challenge_id
     def get_total_diff(self):
         return abs(self.tss_diff)+abs(self.tts_diff)
 
@@ -337,7 +345,10 @@ class myQueryTranscripts:
                                                                                                                                                            str(self.dist_polya_site),
                                                                                                                                                            str(self.within_polya_site),
                                                                                                                                                            str(self.polyA_motif),
-                                                                                                                                                           str(self.polyA_dist), str(self.TSS_genomic_coord), str(self.TTS_genomic_coord))
+                                                                                                                                                           str(self.polyA_dist), str(self.TSS_genomic_coord), str(self.TTS_genomic_coord),
+                                  
+                                  str(self.experiment_id), str(self.data_category), str(self.sample_id), str(self.library_prep), str(self.platform), str(self.software), str(self.challenge_id))
+
 
 
     def as_dict(self):
@@ -389,7 +400,14 @@ class myQueryTranscripts:
          'polyA_motif': self.polyA_motif,
          'polyA_dist': self.polyA_dist,
          'TSS_genomic_coord': self.TSS_genomic_coord,
-         'TTS_genomic_coord': self.TTS_genomic_coord
+         'TTS_genomic_coord': self.TTS_genomic_coord,
+         'experiment_id': self.experiment_id,
+         'data_category': self.data_category,
+         'sample_id': self.sample_id,
+         'library_prep': self.library_prep,
+         'platform': self.platform,
+         'software': self.software,
+         'challenge_id': self.challenge_id
          }
         for sample,count in self.FL_dict.items():
             d["FL."+sample] = count
@@ -1528,13 +1546,13 @@ def isoformClassification(args, isoforms_by_chr, refs_1exon_by_chr, refs_exons_b
 
     isoforms_info = {}
     novel_gene_index = 1
-
+    r_experiment_id, r_data_category, r_sample_id, r_library_prep, r_platform, r_software, r_challenge_id = json_parser(args.json, utilitiesPath)
     for chrom,records in isoforms_by_chr.items():
         for rec in records:
             # Find best reference hit
             isoform_hit = transcriptsKnownSpliceSites(refs_1exon_by_chr, refs_exons_by_chr, start_ends_by_gene, rec, genome_dict, nPolyA=args.window)
             isoform_hit.TSS_genomic_coord, isoform_hit.TTS_genomic_coord = get_TSS_TTS_coordinates(rec)
-
+            isoform_hit.experiment_id, isoform_hit.data_category, isoform_hit.sample_id, isoform_hit.library_prep, isoform_hit.platform, isoform_hit.software, isoform_hit.challenge_id = r_experiment_id, r_data_category, r_sample_id, r_library_prep, r_platform, r_software, r_challenge_id
             if isoform_hit.str_class in ("anyKnownJunction", "anyKnownSpliceSite"):
                 # not FSM or ISM --> see if it is NIC, NNC, or fusion
                 isoform_hit = novelIsoformsKnownGenes(isoform_hit, rec, junctions_by_chr, junctions_by_gene, start_ends_by_gene)
@@ -1935,6 +1953,7 @@ def run(args):
     for pbid, covs in sj_covs_by_isoform.items():
         isoforms_info[pbid].sd = pstdev(covs)
 
+
     #### Printing output file:
     print("**** Writing output files....", file=sys.stderr)
 
@@ -1963,13 +1982,14 @@ def run(args):
     if not args.skip_report:
         print("**** Generating SQANTI3 report....", file=sys.stderr)
         rdata_out = os.path.join(os.path.abspath(args.dir), args.output+"_Rdata")
+        experiment_id, data_category, sample_id, library_prep, platform, software, challenge_id = json_parser(args.json, utilitiesPath)
         if os.path.exists(rdata_out):
              print("WARNING: {0} directory already exists!".format(rdata_out), file=sys.stderr)
              rerun=False
         else:
              os.makedirs(rdata_out)
              rerun=True
-        cmd = RSCRIPTPATH + " {d}/{f} {c} {j} {n} {d} {p} {o} ".format(d=utilitiesPath, f=RSCRIPT_REPORT, c=outputClassPath, j=outputJuncPath, n=args.name, p=args.platform, o=rdata_out )
+        cmd = RSCRIPTPATH + " {d}/{f} {c} {j} {n} {d} {p} {o} ".format(d=utilitiesPath, f=RSCRIPT_REPORT, c=outputClassPath, j=outputJuncPath, n=experiment_id, p=platform, o=rdata_out )
         if subprocess.check_call(cmd, shell=True)!=0:
             print("ERROR running command: {0}".format(cmd), file=sys.stderr)
             sys.exit(-1)
@@ -2223,7 +2243,7 @@ def main():
     parser.add_argument('annotation', help='\t\tReference annotation file (GTF format)')
     parser.add_argument('genome', help='\t\tReference genome (Fasta format)')
     parser.add_argument("--min_ref_len", type=int, default=200, help="\t\tMinimum reference transcript length (default: 200 bp)")
-    parser.add_argument("--force_id_ignore", action="store_true", default=False, help="\t\t Allow the usage of transcript IDs non related with PacBio's nomenclature (PB.X.Y)")
+    parser.add_argument("--force_id_ignore", action="store_true", default=True, help="\t\t Allow the usage of transcript IDs non related with PacBio's nomenclature (PB.X.Y)")
     parser.add_argument("--aligner_choice", choices=['minimap2', 'deSALT', 'gmap'], default='minimap2')
     parser.add_argument('--cage_peak', help='\t\tFANTOM5 Cage Peak (BED format, optional)')
     parser.add_argument("--polyA_motif_list", help="\t\tRanked list of polyA motifs (text, optional)")
@@ -2249,8 +2269,7 @@ def main():
     parser.add_argument("--skip_report", action="store_true", default=False, help=argparse.SUPPRESS)
     parser.add_argument('--isoAnnotLite' , help='\t\tRun isoAnnot Lite to output a tappAS-compatible gff3 file',required=False, action='store_true' , default=False)
     parser.add_argument('--gff3' , help='\t\tPrecomputed tappAS species specific GFF3 file. It will serve as reference to transfer functional attributes',required=False)
-    parser.add_argument('--name' , help='\t\tName or ID of your submission',required=False)
-    parser.add_argument('--platform' , help='\t\tSequencing platform used to build your submission',required=False)
+    parser.add_argument('--json' , help='\t\tExperiment JSON file that is requiered for uploading the submission. More info here: https://lrgasp.github.io/lrgasp-submissions/docs/metadata.html ', required=True)
 
 
     args = parser.parse_args()

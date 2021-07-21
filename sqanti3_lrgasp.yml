@@ -20,6 +20,8 @@ dependencies:
   - r-scales
   - r-kableextra
   - r-dplyr
+  - bioconductor-rsamtools
+  - samtools
   - pip:
     - sklearn
     - bx-python
