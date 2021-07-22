@@ -1,5 +1,5 @@
 ---
-title: "Evaluation metrics LRGASP"
+title: "Evaluation metrics LRGASP -- Challenge 1"
 output: html_document
 params:
   date: !r Sys.Date()
@@ -94,6 +94,10 @@ LRGASP Challenge 1 Definitions:
 
 This document shows the performance of your pipeline for criteria 1. and 3.  Critical data for evaluation according to 2. and 4. will be made available after the closure of the challenge, and therefore pre-evaluation reports cannot be provided. Note you’re your criterion 1 metrics reported here have been calculated using GENCODE human v38 and mouse M27 releases while the final evaluation will use human v39 and mouse M28 to be released after completing of the challenge.
 
+## Evaluation of detected transcripts for Challenge 1  {.tabset .tabset-pills}
+
+Here, SIRVs are not taken into account for none of the metrics.
+
 ### Global overview
 
 ```{r,echo=FALSE}
@@ -143,7 +147,7 @@ ggplot(sqanti_data_ISM, aes( x=subcategory, y=missing_exons_perc, fill=subcatego
 
 ```
 
-## Evaluation NIC
+### Evaluation NIC
 
 ```{r , echo=FALSE}
 
@@ -179,7 +183,7 @@ if (!all(nic_only$novel_SJ==0)){
 ```
 
 
-## Evaluation NNC
+### Evaluation NNC
 
 ```{r, echo=FALSE}
 
@@ -231,11 +235,6 @@ If in this chunk of the evaluation all the results are 0, please, check if the r
 
 ```{r , echo=FALSE}
 kable(all.results["SIRV"], align = "r")
-
-TP_sirvs=sirv_data[which(sirv_data$structural_category=="FSM" & 
-                                           abs(sirv_data$diff_to_TSS)<=50 & abs(sirv_data$diff_to_TTS)<=50),]
-
-TP_sirvs$log_exp=log(TP_sirvs$iso_exp+1)
 
 ```
 
