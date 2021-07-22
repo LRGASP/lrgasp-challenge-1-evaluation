@@ -6,6 +6,7 @@ channels:
   - r
   - defaults
 dependencies:
+  - busco
   - python=3.7
   - perl
   - minimap2
