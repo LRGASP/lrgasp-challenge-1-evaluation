@@ -48,10 +48,7 @@ STAR --runThreadN <num_threads> --runMode genomeGenerate --genomeDir <star_index
 STAR --runThreadN <num_threads> --genomeDir <star_index> --readFilesIn <read1> <read2> --outFileNamePrefix <output_prefix> --alignSJoverhangMin 8  --alignSJDBoverhangMin 1 --outFilterType BySJout --outSAMunmapped Within --outFilterMultimapNmax 20 --outFilterMismatchNoverLmax 0.04 --outFilterMismatchNmax 999 --alignIntronMin 20 --alignIntronMax 1000000 --alignMatesGapMax 1000000 --sjdbScore 1 --genomeLoad NoSharedMemory --outSAMtype BAM SortedByCoordinate --twopassMode Basic
 ```
 
-It will also be **required** to activate the `--gtf` option and also set up two extra arguments that were not included in the normal SQANTI3 script:
- - `--name`:  Name or ID of your submission.
- - `--platform`: Sequencing platform used for building the submitted transcriptome (PacBio, ONT, kitchen_sink). 
-
+It is also neccessary to provide a metadata file in JSON format. I should be like the experiment JSON file that is required to complete a submission. [Here](https://lrgasp.github.io/lrgasp-submissions/docs/metadata.html#experimentjson) you can find which information is expected to be provided through the metadata file.
 
 ### Example
 
@@ -59,7 +56,7 @@ This is an example of how to run the **sqanti3_lrgasp.py** script:
 
 ```
 python sqanti3_lrgasp.py human_submitted.gtf lrgasp_gencode_v38.gtf lrgasp_grch38_sirvs.fasta \
-	--gtf --name human_submission --platform PacBio --cage_peak refTSS.human.bed \
+	--gtf --json human_example.json  --cage_peak refTSS.human.bed \
 	--polyA_motif_list polyA_list.txt -c my_test.SJ.out.tab \
 	-d /my_output/directory -o human_submission_test
 ```
