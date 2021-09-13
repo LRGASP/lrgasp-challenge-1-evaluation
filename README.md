@@ -24,7 +24,7 @@ SQANTI3 also takes advantage of some scripts of [cDNA_Cupcake](https://github.co
 
 ```
 
-Remember to activate the *sqanti3_lrgasp* environment and setting up the `PYTHONPATH`every time you are running the evaluation.
+Remember to activate the *sqanti3_lrgasp* environment and setting up the `PYTHONPATH` every time you are running the evaluation.
 
 ## Run SQANTI3
 
@@ -34,7 +34,7 @@ LRGASP will be using CAGE peak data, polyA motif list and Illumina junction cove
 
 -   **CAGE peak data**:  Download BED files of CAGE peak data for [human](https://github.com/LRGASP/lrgasp-challenge-1-evaluation/blob/main/utilities/refTSS.human.bed) and [mouse](https://github.com/LRGASP/lrgasp-challenge-1-evaluation/blob/main/utilities/refTSS.mouse.bed) and provide them to **sqanti3_lrgasp.challenge1.py** using the `--cage_peak` option
 -   **polyA motif list**: This is a TXT file with the most common polyA motifs for human and mouse that can be downloaded from [here](https://github.com/LRGASP/lrgasp-challenge-1-evaluation/blob/main/utilities/polyA_list.txt). Include this file when running **sqanti3_qc.py** using the `--polyA_motif_list` option.
--   **SJ coverage**:  As SJ information is dependent on the sample being analyzed, it is necessary to run previously STAR to map the Illumina reads against the genome and identify possible splice-junctions using the `--twopassMode`. Then, the resulting _*SJ.oyut.tab_ file can be input to **sqanti3_lrgasp.challenge1.py** with the parameter `-c`. This is an example of how we normally run STAR for this SJ detection:
+-   **SJ coverage**:  As SJ information is dependent on the sample being analyzed, it is necessary to run previously STAR to map the Illumina reads against the genome and identify possible splice-junctions using the `--twopassMode`. Then, the resulting _*SJ.out.tab_ file can be input to **sqanti3_lrgasp.challenge1.py** with the parameter `-c`. This is an example of how we normally run STAR for this SJ detection:
 
 1. Create a genome index with STAR without providing the reference annotation. We don't want to bias the SJ-detection towards the annotated splice sites.
 
@@ -48,7 +48,9 @@ STAR --runThreadN <num_threads> --runMode genomeGenerate --genomeDir <star_index
 STAR --runThreadN <num_threads> --genomeDir <star_index> --readFilesIn <read1> <read2> --outFileNamePrefix <output_prefix> --alignSJoverhangMin 8  --alignSJDBoverhangMin 1 --outFilterType BySJout --outSAMunmapped Within --outFilterMultimapNmax 20 --outFilterMismatchNoverLmax 0.04 --outFilterMismatchNmax 999 --alignIntronMin 20 --alignIntronMax 1000000 --alignMatesGapMax 1000000 --sjdbScore 1 --genomeLoad NoSharedMemory --outSAMtype BAM SortedByCoordinate --twopassMode Basic
 ```
 
-It is also neccessary to provide a metadata file in JSON format. I should be like the experiment JSON file that is required to complete a submission. [Here](https://lrgasp.github.io/lrgasp-submissions/docs/metadata.html#experimentjson) you can find which information is expected to be provided through the metadata file.
+It is also neccessary to provide metadata files in JSON format. To complete a submission it is mandatory to create experiment and entry JSON files and those are the ones that `sqanti3_lrgasp.challenge1.py` is expecting. [Here](https://lrgasp.github.io/lrgasp-submissions/docs/metadata.html) you can find more information about metadata files and some templates for them.
+
+
 
 ### Example
 
@@ -56,7 +58,8 @@ This is an example of how to run the **sqanti3_lrgasp.challenge1.py** script:
 
 ```
 python sqanti3_lrgasp.challenge1.py human_submitted.gtf lrgasp_gencode_v38.gtf lrgasp_grch38_sirvs.fasta \
-	--gtf --json human_example.json  --cage_peak refTSS.human.bed \
+	--gtf --experiment_json experiment.json --entry_json entry.json  \
+	--cage_peak refTSS.human.bed \
 	--polyA_motif_list polyA_list.txt -c my_test.SJ.out.tab \
 	-d /my_output/directory -o human_submission_test
 ```

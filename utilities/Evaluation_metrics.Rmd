@@ -208,7 +208,6 @@ ggplot(nnc_only) +
   ylab("Density") + xlab("log(Mean Coverage of SJ +1)")
 
 
-
 ```
 
 

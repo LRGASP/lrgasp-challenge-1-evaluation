@@ -138,5 +138,41 @@ missing_exons_function=function(X){
   as.integer(X["ref_exons"]) - as.integer(X["exons"])
 }
 
+#### LRGASP_id
 
+isoformTags <- function(junctions_file) {
+  df <- junctions_file[, c("isoform", "chrom", "strand")] # df with isoforms in *junctions.txt
+  dt <- data.table::data.table(df)
+  dt <- dt[,coord:=paste0(junctions_file$genomic_start_coord, "_", junctions_file$genomic_end_coord)]
+  dt <-
+    dt[, list(tagcoord = paste0(coord, collapse = "_")),
+       by = c("isoform", "chrom", "strand")]
+  df <- as.data.frame(dt)
+  df <- df[order(df$isoform),]
+  df$LRGASP_id <- paste(df$chrom, df$strand, df$tagcoord, sep = "_")
+  tag_df <- df[,c("isoform", "LRGASP_id")]
+  return(tag_df)
+}
 
+monoexon_tag <- function(iso_classif){
+  if (is.na(iso_classif["LRGASP_id"])){
+    if (iso_classif["strand"]=='-'){
+      init <- as.integer(iso_classif["TTS_genomic_coord"])
+      end <- as.integer(iso_classif["TSS_genomic_coord"])
+    } else {
+      init <- as.integer(iso_classif["TSS_genomic_coord"])
+      end <- as.integer(iso_classif["TTS_genomic_coord"])
+    }
+    init <- round(init, digits = -2)
+    end <- round(end, digits = -2)
+    tag <- paste0(iso_classif["chrom"], "_", iso_classif["strand"], '_', init, '_', end)
+  }else{
+    tag <- iso_classif["LRGASP_id"]
+  }
+  tag
+}
+
+addSC <- function(class_file){
+  class_file$LRGASP_id <- paste0(class_file$structural_category, "_", class_file$LRGASP_id)
+  return(class_file)
+}
