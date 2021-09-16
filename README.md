@@ -4,7 +4,7 @@ The evaluation of submitted transcript models will be done using [SQANTI3](https
 
 ## Setting up the environment
 
-In order to install all the dependencies needed by **sqanti3_lrgasp.challenge1.py**, please use the [YML](https://github.com/LRGASP/lrgasp-challenge-1-evaluation/blob/main/sqanti3_lrgasp.yml) file to build a conda environment. 
+In order to install all the dependencies needed by **sqanti3_lrgasp.challenge1.py**, please use the [YML](https://raw.githubusercontent.com/LRGASP/lrgasp-challenge-1-evaluation/main/sqanti3_lrgasp.yml) file to build a conda environment. 
 
 ```
 conda env create -f sqanti3_lrgasp.yml
@@ -32,8 +32,8 @@ When running [SQANTI3](https://github.com/ConesaLab/SQANTI3), your transcript-mo
 
 LRGASP will be using CAGE peak data, polyA motif list and Illumina junction coverage to evaluate your transcript models using SQANTI3. We therefore recommend you run **sqanti3_lrgasp.challenge1.py** enabling these analyses. To do so:
 
--   **CAGE peak data**:  Download BED files of CAGE peak data for [human](https://github.com/LRGASP/lrgasp-challenge-1-evaluation/blob/main/utilities/refTSS.human.bed) and [mouse](https://github.com/LRGASP/lrgasp-challenge-1-evaluation/blob/main/utilities/refTSS.mouse.bed) and provide them to **sqanti3_lrgasp.challenge1.py** using the `--cage_peak` option
--   **polyA motif list**: This is a TXT file with the most common polyA motifs for human and mouse that can be downloaded from [here](https://github.com/LRGASP/lrgasp-challenge-1-evaluation/blob/main/utilities/polyA_list.txt). Include this file when running **sqanti3_qc.py** using the `--polyA_motif_list` option.
+-   **CAGE peak data**:  Download BED files of CAGE peak data for [human](https://raw.githubusercontent.com/LRGASP/lrgasp-challenge-1-evaluation/main/utilities/refTSS.human.bed) and [mouse](https://raw.githubusercontent.com/LRGASP/lrgasp-challenge-1-evaluation/main/utilities/refTSS.mouse.bed) and provide them to **sqanti3_lrgasp.challenge1.py** using the `--cage_peak` option
+-   **polyA motif list**: This is a TXT file with the most common polyA motifs for human and mouse that can be downloaded from [here](https://raw.githubusercontent.com/LRGASP/lrgasp-challenge-1-evaluation/main/utilities/polyA_list.txt). Include this file when running **sqanti3_qc.py** using the `--polyA_motif_list` option.
 -   **SJ coverage**:  As SJ information is dependent on the sample being analyzed, it is necessary to run previously STAR to map the Illumina reads against the genome and identify possible splice-junctions using the `--twopassMode`. Then, the resulting _*SJ.out.tab_ file can be input to **sqanti3_lrgasp.challenge1.py** with the parameter `-c`. This is an example of how we normally run STAR for this SJ detection:
 
 1. Create a genome index with STAR without providing the reference annotation. We don't want to bias the SJ-detection towards the annotated splice sites.
