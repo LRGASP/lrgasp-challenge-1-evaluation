@@ -21,23 +21,24 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
                                           labels = cat_labels,
                                           levels = cat_levels,
                                           ordered=TRUE)
-  # separate spike-ins and isoforms
-  sirv_data=sqanti_data[grep("SIRV",sqanti_data$chrom),]
-  ercc_data=sqanti_data[grep("ERCC",sqanti_data$chrom),]
-  sirv_data.junc=sqanti_data.junc[grep("SIRV",sqanti_data.junc$chrom),]
-  ercc_data.junc=sqanti_data.junc[grep("ERCC",sqanti_data.junc$chrom),]
-  
+
   ### Add LRGASP_id
   
   iso_tags <- isoformTags(sqanti_data.junc)
   sqanti_data <- merge(sqanti_data, iso_tags, by="isoform" , all.x=TRUE)
   sqanti_data$LRGASP_id <- apply(sqanti_data, 1, monoexon_tag)
   sqanti_data <- addSC(sqanti_data)
-  
+
   ### rewrite initial table with LRGASP_id
   
   write.table(sqanti_data, class.file, quote=F, sep = "\t", row.names = FALSE)
-  
+
+  ### separate spike-ins and isoforms
+  sirv_data=sqanti_data[grep("SIRV",sqanti_data$chrom),]
+  ercc_data=sqanti_data[grep("ERCC",sqanti_data$chrom),]
+  sirv_data.junc=sqanti_data.junc[grep("SIRV",sqanti_data.junc$chrom),]
+  ercc_data.junc=sqanti_data.junc[grep("ERCC",sqanti_data.junc$chrom),]
+
   ### remove SIRV and ERCC transcripts from sqanti data
   sqanti_data=sqanti_data[grep("SIRV|ERCC",sqanti_data$chrom, invert=T),]
   sqanti_data.junc=sqanti_data.junc[grep("SIRV|ERCC",sqanti_data.junc$chrom, invert=T),]
