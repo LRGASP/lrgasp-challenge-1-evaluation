@@ -112,13 +112,16 @@ kable(all.results["global_SJ"], align = "r")
 
 kable(all.results["FSM"], align = "r")
 
-ggplot(sqanti_data_FSM, aes(x=log(mean_all_coverage+1), fill=structural_category ) )+
+if (nrow(sqanti_data_FSM)>1 & sum(!is.na(sqanti_data_FSM$mean_all_coverage)) ){
+  ggplot(sqanti_data_FSM, aes(x=log(mean_all_coverage+1), fill=structural_category ) )+
   geom_density(na.rm = T) +
   mytheme +
   scale_fill_manual(values=myPalette[1])+
   labs(title="Mean SJ coverage",
        subtitle = "FSM isoforms") +
   xlab("log(Mean coverage of SJ +1)")
+
+}
 
 ```
 
@@ -127,15 +130,19 @@ ggplot(sqanti_data_FSM, aes(x=log(mean_all_coverage+1), fill=structural_category
 ```{r , echo=FALSE}
 
 kable(all.results["ISM"], align = "r")
-ggplot(sqanti_data_ISM, aes(x=log(mean_all_coverage+1), fill=structural_category ) )+
+
+if (nrow(sqanti_data_ISM)>1 & sum(!is.na(sqanti_data_ISM$mean_all_coverage)) ){
+  ggplot(sqanti_data_ISM, aes(x=log(mean_all_coverage+1), fill=structural_category ) )+
   geom_density(na.rm = T) +
   mytheme +
   scale_fill_manual(values=myPalette[2])+
   labs(title="Mean SJ coverage",
        subtitle = "ISM isoforms") +
   xlab("log(Mean coverage of SJ +1)")
+}
 
-ggplot(sqanti_data_ISM, aes( x=subcategory, y=missing_exons_perc, fill=subcategory)) +
+if (nrow(sqanti_data_ISM)>1){
+  ggplot(sqanti_data_ISM, aes( x=subcategory, y=missing_exons_perc, fill=subcategory)) +
   geom_boxplot() + 
   mytheme + 
   scale_fill_discrete()+
@@ -144,6 +151,8 @@ ggplot(sqanti_data_ISM, aes( x=subcategory, y=missing_exons_perc, fill=subcatego
   ylab("Percentage of missing exons") +
   xlab("Subcategories") +
   coord_flip()
+}
+
 
 ```
 
@@ -153,17 +162,20 @@ ggplot(sqanti_data_ISM, aes( x=subcategory, y=missing_exons_perc, fill=subcatego
 
 kable(all.results["NIC"], align = "r")
 
-ggplot(sqanti_data_NIC) +
+if(nrow(sqanti_data_NIC) > 1 & sum(!is.na(sqanti_data_NIC$mean_known_coverage)) > 1 & sum(!is.na(sqanti_data_NIC$mean_novel_coverage)) > 1){
+  ggplot(sqanti_data_NIC) +
   geom_density(color="black", size=0.5, aes( x = log(mean_novel_coverage +1) , fill="Novel SJ"), alpha=0.5, na.rm = T) +
   geom_density(color="black",  size=0.5, aes( x = log(mean_known_coverage +1) , fill="Known SJ"), alpha=0.5, na.rm = T) +
   mytheme  +
   labs(title="Mean SJ coverage per isoform comparison: known SJ vs novel SJ",
        subtitle = "Using all NIC isoforms") +
   ylab("Density") + xlab("log(Mean Coverage of SJ +1)") 
+}
 
 nic_only=subset(sqanti_data_NIC, FSM_class=="A")
 
-if (!all(nic_only$novel_SJ==0)){
+if(nrow(nic_only)>1 | sum(!is.na(nic_only$mean_known_coverage)) > 1 | sum(!is.na(nic_only$mean_novel_coverage)) > 1) {
+  if (!all(nic_only$novel_SJ==0)){
   ggplot(nic_only) +
   geom_density(color="black", size=0.5, aes( x = log(mean_novel_coverage +1) , fill="Novel SJ"), alpha=0.5, na.rm = T) +
   geom_density(color="black",  size=0.5, aes( x = log(mean_known_coverage +1) , fill="Known SJ"), alpha=0.5, na.rm = T) +
@@ -178,6 +190,7 @@ if (!all(nic_only$novel_SJ==0)){
   labs(title="Mean SJ coverage per isoform comparison: known SJ vs novel SJ",
        subtitle = "Using just NIC isoforms which are the only transcript expressed for that gene") +
       ylab("Density") + xlab("log(Mean Coverage of SJ +1)")
+  }
 }
 
 ```
@@ -189,23 +202,27 @@ if (!all(nic_only$novel_SJ==0)){
 
 kable(all.results["NNC"], align = "r")
 
-ggplot(sqanti_data_NNC) +
+if(nrow(sqanti_data_NNC) > 1 & sum(!is.na(sqanti_data_NNC$mean_known_coverage)) > 1 & sum(!is.na(sqanti_data_NNC$mean_novel_coverage)) > 1){
+  ggplot(sqanti_data_NNC) +
   geom_density(color="black", size=0.5, aes( x = log(mean_novel_coverage +1) , fill="Novel SJ"), alpha=0.5, na.rm = T) +
   geom_density(color="black",  size=0.5, aes( x = log(mean_known_coverage +1) , fill="Known SJ"), alpha=0.5, na.rm = T) +
   mytheme  +
   labs(title="Mean SJ coverage per isoform comparison: all SJ vs novel SJ",
        subtitle = "Using all NNC isoforms") +
   ylab("Density") + xlab("log(Mean Coverage of SJ +1)") 
+}
 
 nnc_only=subset(sqanti_data_NNC, (FSM_class=="A"))
-  
-ggplot(nnc_only) +
+
+if(nrow(nnc_only) > 1 & sum(!is.na(nnc_only$mean_known_coverage)) > 1 & sum(!is.na(nnc_only$mean_novel_coverage)) > 1){
+  ggplot(nnc_only) +
   geom_density(color="black", size=0.5, aes( x = log(mean_novel_coverage +1) , fill="Novel SJ"), alpha=0.5, na.rm = T) +
   geom_density(color="black",  size=0.5, aes( x = log(mean_known_coverage +1) , fill="Known SJ"), alpha=0.5, na.rm = T) +
   mytheme  +
   labs(title="Mean SJ coverage per isoform comparison: all SJ vs novel SJ",
        subtitle = "Using just NNC isoforms which are the only transcript expressed for that gene") +
   ylab("Density") + xlab("log(Mean Coverage of SJ +1)")
+}
 
 
 ```
