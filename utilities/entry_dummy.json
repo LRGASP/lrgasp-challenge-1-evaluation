@@ -1,0 +1,25 @@
+{
+    "entry_id": "Fake_Entry_ID",
+    "challenge_id": "iso_detect_ref",
+    "team_id": "synapse_team_id",
+    "team_name": "Fake Team from InventLand",
+    "data_category": "long_only",
+    "samples": [
+        "ES"
+    ],
+    "library_preps": [
+        "cDNA"
+    ],
+    "platforms": [
+        "Unkown_platform"
+    ],
+    "experiment_ids": [
+        "Fake_Experiment_ID"
+    ],
+    "contacts": [
+        {
+            "name": "Mr. Nobody",
+            "email": ""
+        }
+    ]
+}

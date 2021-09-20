@@ -50,6 +50,7 @@ STAR --runThreadN <num_threads> --genomeDir <star_index> --readFilesIn <read1> <
 
 It is also neccessary to provide metadata files in JSON format. To complete a submission it is mandatory to create experiment and entry JSON files and those are the ones that `sqanti3_lrgasp.challenge1.py` is expecting. [Here](https://lrgasp.github.io/lrgasp-submissions/docs/metadata.html) you can find more information about metadata files and some templates for them.
 
+If you don't have those JSON files ready yet, now `--experiment_json` and `--entry_json` are optional arguments. If they are not defined, inside `utilities/` folder there are a couple of *dummy* files that will do the job. This won't have an effect on the evaluation, but you will find the fake attributes in your report titles and in some columns of the `*_classification.txt`. Feel free to copy them and create your own "fake" JSON files with meaningful information. 
 
 
 ### Example
@@ -64,6 +65,6 @@ python sqanti3_lrgasp.challenge1.py human_submitted.gtf lrgasp_gencode_v38.gtf l
 	-d /my_output/directory -o human_submission_test
 ```
 
-This will generate in `/my_output/directory` the two main SQANTI3 outputs (`*_classification.txt`and `*_junctions.txt`) and a HTML file that will be called, in this case, `human_submission_test_Evaluation_report.html`.
+This will generate in `/my_output/directory` the two main SQANTI3 outputs (`*_classification.txt` and `*_junctions.txt`) and a HTML file that will be called, in this case, `human_submission_test_Evaluation_report.html`.
 
 

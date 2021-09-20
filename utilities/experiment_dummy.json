@@ -1,0 +1,30 @@
+{
+    "experiment_id": "Fake_Experiment_ID",
+    "challenge_id": "iso_detect_ref",
+    "description": "Some description about the experiment",
+    "notes": "This went well",
+    "species": "mouse",
+    "data_category": "long_only",
+    "samples": [
+        "ES"
+    ],
+    "library_preps": [
+        "cDNA"
+    ],
+    "platforms": [
+        "Unknown_platform"
+    ],
+    "libraries": [
+    ],
+    "extra_libraries":[
+    ],
+    "software": [
+        {
+            "name": "Fake Tools",
+            "description": "Description of a fake pipeline",
+            "version": "1.0.0",
+            "url": "https://github.com/",
+            "config": "Default parameters of a fake pipline"
+        }
+    ]
+}

@@ -2258,11 +2258,19 @@ def main():
     parser.add_argument("--skip_report", action="store_true", default=False, help=argparse.SUPPRESS)
     parser.add_argument('--isoAnnotLite' , help='\t\tRun isoAnnot Lite to output a tappAS-compatible gff3 file',required=False, action='store_true' , default=False)
     parser.add_argument('--gff3' , help='\t\tPrecomputed tappAS species specific GFF3 file. It will serve as reference to transfer functional attributes',required=False)
-    parser.add_argument('--experiment_json' , help='\t\tExperiment JSON file that is requiered for uploading the submission. More info here: https://lrgasp.github.io/lrgasp-submissions/docs/metadata.html ', required=True)
-    parser.add_argument('--entry_json' , help='\t\tEntry JSON file that is requiered for uploading the submission. More info here: https://lrgasp.github.io/lrgasp-submissions/docs/metadata.html ', required=True)
+    parser.add_argument('--experiment_json' , help='\t\tExperiment JSON file that is requiered for uploading the submission. More info here: https://lrgasp.github.io/lrgasp-submissions/docs/metadata.html . In case it is not provided, a fake one will be used, but that will not affect to the results of the evaluation.', required=False)
+    parser.add_argument('--entry_json' , help='\t\tEntry JSON file that is requiered for uploading the submission. More info here: https://lrgasp.github.io/lrgasp-submissions/docs/metadata.html . In case it is not provided, a fake one will be used, but that will not affect to the results of the evaluation.', required=False)
 
 
     args = parser.parse_args()
+
+    if args.experiment_json is None:
+        args.experiment_json = os.path.join(utilitiesPath,"experiment_dummy.json")
+        print("WARNING: Experiment JSON wasn't provided. A fake one will be used (you can find it in utilities/experiment_dummy.json. This won't have an effect on the evaluation, but you will find the made-up attributes in your report titles.")
+
+    if args.entry_json is None:
+        args.entry_json = os.path.join(utilitiesPath,"entry_dummy.json")
+        print("WARNING: Entry JSON wasn't provided. A fake one will be used (you can find it in utilities/entry_dummy.json. This won't have an effect on the evaluation, but you will find the made-up attributes in your report titles.")
 
     if args.is_fusion:
         if args.orf_input is None:
