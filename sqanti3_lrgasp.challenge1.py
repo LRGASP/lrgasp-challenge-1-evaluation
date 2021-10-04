@@ -2231,7 +2231,7 @@ def main():
     parser.add_argument('isoforms', help='\tIsoforms (FASTA/FASTQ) or GTF format. Recommend provide GTF format with the --gtf option.')
     parser.add_argument('annotation', help='\t\tReference annotation file (GTF format)')
     parser.add_argument('genome', help='\t\tReference genome (Fasta format)')
-    parser.add_argument("--min_ref_len", type=int, default=200, help="\t\tMinimum reference transcript length (default: 200 bp)")
+    parser.add_argument("--min_ref_len", type=int, default=0, help="\t\tMinimum reference transcript length (default: 0 bp)")
     parser.add_argument("--force_id_ignore", action="store_true", default=True, help="\t\t Allow the usage of transcript IDs non related with PacBio's nomenclature (PB.X.Y)")
     parser.add_argument("--aligner_choice", choices=['minimap2', 'deSALT', 'gmap'], default='minimap2')
     parser.add_argument('--cage_peak', help='\t\tFANTOM5 Cage Peak (BED format, optional)')
