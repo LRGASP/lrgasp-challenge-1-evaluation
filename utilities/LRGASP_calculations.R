@@ -220,6 +220,7 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   ########################
   print ("NIC evaluation")
   sqanti_data_NIC=subset(sqanti_data, structural_category=="NIC")
+  if (nrow(sqanti_data_NIC) > 0 ) {
   sqanti_data_NIC$mean_novel_coverage=apply(sqanti_data_NIC,1, mean_cov_novel, sqanti_data.junc)
   sqanti_data_NIC$mean_known_coverage=apply(sqanti_data_NIC,1, mean_cov_known,sqanti_data.junc)
   sqanti_data_NIC$SJ_wo_cov=apply(sqanti_data_NIC,1,SJ_wo_cov,sqanti_data.junc)
@@ -276,12 +277,20 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   c.NIC_results["Supported Novel Transcript Model (SNTM)", "Relative value (%)" ]=round(NIC_TPR_allTP, digits = 2)
   c.NIC_results["Intron retention incidence","Absolute value"]=NIC_IR_incidence_abs
   c.NIC_results["Intron retention incidence","Relative value (%)"]=round(NIC_IR_incidence, digits = 2)
-  
+  } else {
+  c.NIC_results=data.frame(row.names = c("Number of isoforms", "5' and 3' reference supported (gene)",
+                                         "5' reference supported (gene)", "3' reference supported (gene)",
+                                         "5' CAGE supported", "3' polyA motif supported",
+                                         "Supported Novel Transcript Model (SNTM)", "Intron retention incidence"))
+  c.NIC_results[,"Absolute value"]="0"
+  c.NIC_results[,"Relative value (%)"]="0"
+
+  }
   ### Evaluation of NNC
   ########################
   print ("NNC evaluation")
   sqanti_data_NNC=subset(sqanti_data, structural_category=="NNC")
-  
+  if (nrow(sqanti_data_NNC) > 0) {
   sqanti_data_NNC$mean_novel_coverage=apply(sqanti_data_NNC,1, mean_cov_novel,sqanti_data.junc)
   sqanti_data_NNC$mean_known_coverage=apply(sqanti_data_NNC,1, mean_cov_known,sqanti_data.junc)
   sqanti_data_NNC$SJ_wo_cov=apply(sqanti_data_NNC,1,SJ_wo_cov,sqanti_data.junc)
@@ -329,7 +338,8 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   d.NNC_results=data.frame(row.names = c("Number of isoforms", "5' and 3' reference supported (gene)", 
                                          "5' reference supported (gene)", "3' reference supported (gene)", 
                                          "5' CAGE supported", "3' polyA motif supported",
-                                         "Supported Novel Transcript Model (SNTM)", "Non-canonical SJ incidence"))
+                                         "Supported Novel Transcript Model (SNTM)", "Non-canonical SJ incidence",
+                                         "Full Illumina SJ support", "RT-switching incidence"))
   d.NNC_results[,"Absolute value"]="-"
   d.NNC_results[,"Relative value (%)"]="-"
   d.NNC_results["Number of isoforms","Absolute value"]=as.integer(dim(sqanti_data_NNC)[1])
@@ -351,7 +361,16 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   d.NNC_results["Non-canonical SJ incidence","Relative value (%)"]=round(NNC_non_canonical_incidence, digits = 2)
   d.NNC_results["RT-switching incidence","Absolute value"]=NNC_RT_switching_incidence_abs
   d.NNC_results["RT-switching incidence","Relative value (%)"]=round(NNC_RT_switching_incidence, digits = 2)
+  } else {
+  d.NNC_results=data.frame(row.names = c("Number of isoforms", "5' and 3' reference supported (gene)",
+                                         "5' reference supported (gene)", "3' reference supported (gene)",
+                                         "5' CAGE supported", "3' polyA motif supported",
+                                         "Supported Novel Transcript Model (SNTM)", "Non-canonical SJ incidence",
+                                         "Full Illumina SJ support", "RT-switching incidence"))
 
+  d.NNC_results[,"Absolute value"]="0"
+  d.NNC_results[,"Relative value (%)"]="0"
+  }
   
   ### Evaluation of SIRVs
   ##############################################

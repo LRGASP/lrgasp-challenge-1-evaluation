@@ -163,18 +163,27 @@ if (nrow(sqanti_data_ISM)>1){
 kable(all.results["NIC"], align = "r")
 
 if(nrow(sqanti_data_NIC) > 1 & sum(!is.na(sqanti_data_NIC$mean_known_coverage)) > 1 & sum(!is.na(sqanti_data_NIC$mean_novel_coverage)) > 1){
+  if (!all(sqanti_data_NIC$novel_SJ==0)){
   ggplot(sqanti_data_NIC) +
   geom_density(color="black", size=0.5, aes( x = log(mean_novel_coverage +1) , fill="Novel SJ"), alpha=0.5, na.rm = T) +
   geom_density(color="black",  size=0.5, aes( x = log(mean_known_coverage +1) , fill="Known SJ"), alpha=0.5, na.rm = T) +
   mytheme  +
   labs(title="Mean SJ coverage per isoform comparison: known SJ vs novel SJ",
        subtitle = "Using all NIC isoforms") +
-  ylab("Density") + xlab("log(Mean Coverage of SJ +1)") 
+  ylab("Density") + xlab("log(Mean Coverage of SJ +1)")  
+  }else{
+  ggplot(sqanti_data_NIC) +
+  geom_density(color="black",  size=0.5, aes( x = log(mean_known_coverage +1) , fill="Known SJ"), alpha=0.5, na.rm = T) +
+  mytheme  +
+  labs(title="Mean SJ coverage per isoform comparison: known SJ vs novel SJ",
+       subtitle = "Using all NIC isoforms") +
+  ylab("Density") + xlab("log(Mean Coverage of SJ +1)")  
+  }
 }
 
 nic_only=subset(sqanti_data_NIC, FSM_class=="A")
 
-if(nrow(nic_only)>1 | sum(!is.na(nic_only$mean_known_coverage)) > 1 | sum(!is.na(nic_only$mean_novel_coverage)) > 1) {
+if(nrow(nic_only)>1 & sum(!is.na(nic_only$mean_known_coverage)) > 1 & sum(!is.na(nic_only$mean_novel_coverage)) > 1) {
   if (!all(nic_only$novel_SJ==0)){
   ggplot(nic_only) +
   geom_density(color="black", size=0.5, aes( x = log(mean_novel_coverage +1) , fill="Novel SJ"), alpha=0.5, na.rm = T) +
