@@ -5,6 +5,7 @@ channels:
   - anaconda
   - r
   - defaults
+  - jmltf7
 dependencies:
   - busco
   - cython
@@ -21,9 +22,22 @@ dependencies:
   - r-ggplot2
   - r-scales
   - r-kableextra
+  - r-dt
+  - r-gridextra
+  - r-knitr
+  - r-optparse
+  - r-rmarkdown
+  - r-ggridges
   - r-dplyr
   - r-data.table
+  - r-tidyverse
+  - r-rmpfr
+  - r-stringr
+  - r-reshape
+  - r-jaccard
+  - r-corrplot
   - bioconductor-rsamtools
+  - bioconductor-complexheatmap
   - samtools
   - scipy
   - bx-python

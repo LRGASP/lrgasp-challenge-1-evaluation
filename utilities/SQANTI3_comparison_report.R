@@ -24,13 +24,12 @@ suppressMessages(library(knitr))
 suppressMessages(library(optparse))
 suppressMessages(library(rmarkdown))
 suppressMessages(library(tidyverse))
-suppressMessages(library(UpSetR))
 suppressMessages(library(ggridges))
 suppressMessages(library(reshape))
 suppressMessages(library(ComplexHeatmap))
 suppressMessages(library(RColorConesa))
-#suppressMessages(library(FactoMineR))
-
+suppressMessages(library(jaccard))
+suppressMessages(library(corrplot))
 
 #######################################
 #                                     #
@@ -162,33 +161,39 @@ SD_TSS_TTS <- function(l_class){
   medianTSS <- sapplycolumns(allTSS, median)
   medianTTS <- sapplycolumns(allTTS, median)
   
-  TSS_TTS_df$median.SD.TSS <- apply(medianTSS, 1, function(x) sd(unlist(x),na.rm = TRUE))
   
+  TSS_TTS_df$median.SD.TSS <- apply(medianTSS, 1, function(x) sd(unlist(x),na.rm = TRUE))
+  TSS_TTS_df$mean.median.TSS <- apply(medianTSS, 1, function(x) mean(unlist(x),na.rm = TRUE))
   TSS_TTS_df$median.SD.TTS <- apply(medianTTS, 1, function(x) sd(unlist(x),na.rm = TRUE))
+  TSS_TTS_df$mean.median.TTS <- apply(medianTTS, 1, function(x) mean(unlist(x),na.rm = TRUE))
   
   # Max SD
   
   TSS_TTS_df$SD.TSS <- apply(TSS_TTS_df[,c("minmax.SD.TSS", "median.SD.TSS")],1,max)
   TSS_TTS_df$SD.TTS <- apply(TSS_TTS_df[,c("minmax.SD.TTS", "median.SD.TTS")],1,max)
   
-  return(TSS_TTS_df[, c("LRGASP_id", "SD.TSS", "SD.TTS")])
+  return(TSS_TTS_df[, c("LRGASP_id", "SD.TSS", "SD.TTS", "mean.median.TSS", "mean.median.TTS")])
+}
+
+calculate_CPM <- function(class_table){
+  total_counts=sum(class_table$FL)
+  class_table$CPM=apply(class_table,1, function(x){(as.numeric(x["FL"]) * 10^6)/total_counts})
+  return(class_table)
 }
 
 iso_analysis <- function(l_class){
-  
+  l_class <- purrr::map(l_class,calculate_CPM)
   class_bind <- bind_rows(l_class)
   class_bind <- data.table::data.table(class_bind)
   
   class_compact <- class_bind[, list(
     exons=unique(exons),
     length=as.numeric(median(unlist(length))),
-    FL_cpm=as.numeric(median(FL))
+    FL_cpm=as.numeric(median(CPM)),
+    gene=unique(associated_gene) %>% paste(collapse="-")
   ), by="LRGASP_id"]
   
   class_compact <- as.data.frame(class_compact)
-  tot_reads <- sum(class_compact$FL_cpm)
-  
-  class_compact$FL_cpm <- (class_compact$FL_cpm * 10^6)/tot_reads 
   
   if (TSS_TTS_coord == TRUE) {
     TSS_TTS_df <- SD_TSS_TTS(l_class)
@@ -198,15 +203,42 @@ iso_analysis <- function(l_class){
     LRGASP_id = class_compact$LRGASP_id,
     SD.TSS=NA,
     SD.TTS=NA,
+    mean.median.TSS=NA,
+    mean.median.TTS=NA,
     exons=class_compact$exons,
     length=class_compact$length,
-    iso_exp=class_compact$iso_exp
+    iso_exp=class_compact$FL_cpm,
+    gene=class_compatc$gene
   )}
   
   return(df_iso)
   
 }
 
+# ---------------- Jaccard index across pipelines 
+
+get_jaccard_matrix <- function(pa, pipe){
+  only_pipelines <- pa[, pipe]
+  pip <- colnames(only_pipelines)
+  id <- expand.grid(pipe,pipe)
+  pairwise_intersection_matrix <- matrix( colSums( only_pipelines[ , id[,1] ] == only_pipelines[ , id[,2] ] & only_pipelines[ , id[,1] ]!=0) , ncol = length(pip) )
+  pairwise_union_matrix <-  matrix( colSums( (only_pipelines[ , id[,1] ]==1 | only_pipelines[ , id[,2] ]==1) ),
+                                    ncol = length(pip) )
+  
+  jaccard_index_matrix <- pairwise_intersection_matrix/pairwise_union_matrix
+  colnames(jaccard_index_matrix) <- pipe
+  rownames(jaccard_index_matrix) <- pipe
+
+  return(jaccard_index_matrix)
+}
+
+# ------------------ Sum presence of UJC across pipelines
+sum_pipelines <- function(x, pip){
+  x <- x[pip]
+  x <- as.numeric(x)
+  z <- sum(x)
+  return(z)
+}
 
 # -------------------- Gene analysis
 
@@ -322,11 +354,6 @@ gene_analysis <- function(l_class){
   return(df_gene)
 }
 
-
-### new comb_mat function
-
-script.path <- getwd()
-#source(paste(script.path, "comb_mat_functions.R", sep = "/"))
 
 # -------------------- Final comparison function
 
@@ -459,9 +486,10 @@ if (is.null(directory)) {
   stop("\n\nAt least one argument must be supplied.\nThe -d argument is required (directory containing input files)")
 }
 
-code=read.csv(opt$code, header=F)
-code=code[order(code$V1),]
+code=read.csv(opt$code, header=T)
 colnames(code) <- c("pipeline", "Library", "Platform", "Data_Category")
+code=code[order(code$pipeline),]
+
 
 # -------------------- Load data
 
@@ -828,6 +856,12 @@ if (lrgasp == TRUE){
   colnames(nnc.metrics_perc) <- names(lrgasp.res)
 }
 
+#####
+pa_table_sum=res$comparisonPA
+pa_table_sum$found_by <- apply(pa_table_sum,1, sum_pipelines, code$pipeline)
+
+pa_coord_merged=merge(res$iso_metrics, pa_table_sum[,c("TAGS", "structural_category", "found_by")], by.x = "LRGASP_id", by.y="TAGS")
+
 
 #######################################
 #                                     #
@@ -858,9 +892,9 @@ if (lrgasp == TRUE){
 # p6: distance to CAGE peak
 # p7: bad quality features
 # p8: good quality features
-# p9: Venn diagrams 
+# p9: Jaccard index diagrams 
 # p10: UpSet plot
-# p12: UpSet plot for SC
+# p12: Num pipelines detected UJC vs FL counts
 # p13: TSS standard deviation
 # p14: TTS standard deviation
 # p16: iso analysis
@@ -888,7 +922,7 @@ mytheme <- theme_classic(base_family = "Helvetica") +
   theme(axis.line.x = element_line(color="black", size = 0.4),
         axis.line.y = element_line(color="black", size = 0.4)) +
   theme(axis.title.x = element_text(size=13),
-        axis.text.x  = element_text(size=8),
+        axis.text.x  = element_text(size=6),
         axis.title.y = element_text(size=13),
         axis.text.y  = element_text(vjust=0.5, size=6) ) +
   theme(legend.text = element_text(size = 8), legend.title = element_text(size=10), legend.key.size = unit(0.5, "cm")) +
@@ -901,9 +935,13 @@ mytheme <- theme_classic(base_family = "Helvetica") +
 
 sorted_pipelines = stringr::str_sort(code$pipeline)
 
-title1.1 <- grid::textGrob("Table 1.1. Summary from SQANTI3 output comparison\n", gp=gpar(fontface="italic", fontsize=10), vjust = -3.2)
-table1.1 <- tableGrob(df_summary.1[,c("ID","FSM","ISM","NIC","NNC","Antisense","Intergenic")], rows = NULL )
-t1.1 <- gTree(children=gList(table1.1, title1.1))
+#title1.1 <- grid::textGrob("Table 1.1. Summary from SQANTI3 output comparison\n", gp=gpar(fontface="italic", fontsize=10), vjust = -3.2)
+#table1.1 <- tableGrob(df_summary.1[,c("ID","FSM","ISM","NIC","NNC","Antisense","Intergenic")], rows = NULL )
+#t1.1 <- gTree(children=gList(table1.1, title1.1))
+
+print("Writting Summary table for structural categories...")
+write.table(df_summary.1, paste0(output_directory, "/", output_name, ".summary_table_SC.csv" ), sep=",", quote = FALSE, row.names = FALSE, col.names = TRUE)
+
 melted_summary.1 <- melt(df_summary.1, id.vars = "ID")
 melted_summary.1$ID <- factor(melted_summary.1$ID, levels=sorted_pipelines)
 pt1.1 <- ggplot2::ggplot(melted_summary.1, aes(x=ID, y=value, group=variable)) + 
@@ -916,9 +954,13 @@ pt1.1 <- ggplot2::ggplot(melted_summary.1, aes(x=ID, y=value, group=variable)) +
 
 
 
-title1.2 <- grid::textGrob("Table 1.2. Summary from SQANTI3 output comparison\n Only unique UJC", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
-table1.2 <- tableGrob(df_summary.2[,c("ID","FSM","ISM","NIC","NNC","Antisense","Intergenic")], rows = NULL)
-t1.2 <- gTree(children=gList(table1.2, title1.2))
+#title1.2 <- grid::textGrob("Table 1.2. Summary from SQANTI3 output comparison\n Only unique UJC", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
+#table1.2 <- tableGrob(df_summary.2[,c("ID","FSM","ISM","NIC","NNC","Antisense","Intergenic")], rows = NULL)
+#t1.2 <- gTree(children=gList(table1.2, title1.2))
+
+print("Writting Summary table for structural categories. Only unique UJC...")
+write.table(df_summary.2, paste0(output_directory, "/", output_name, ".summary_table_UJC_SC.csv" ), sep=",", quote = FALSE, row.names = FALSE, col.names = TRUE)
+
 melted_summary.2 <- melt(df_summary.2, id.vars = "ID")
 melted_summary.2$ID <- factor(melted_summary.2$ID, levels=sorted_pipelines)
 pt1.2 <- ggplot2::ggplot(melted_summary.2, aes(x=ID, y=value, group=variable)) + 
@@ -954,9 +996,13 @@ if (lrgasp == TRUE){
   table_theme=ttheme_default(base_size = 8, base_colour = "black", base_family = "",
                  parse = FALSE, padding = unit(c(2, 2), "mm"))
   ## SIRVs
-  title3 <- grid::textGrob("Table 3. SIRV metrics comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
-  table3 <- tableGrob(sirv.metrics, theme = table_theme)
-  t3 <- gTree(children=gList(table3, title3))
+  #title3 <- grid::textGrob("Table 3. SIRV metrics comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
+  #table3 <- tableGrob(sirv.metrics, theme = table_theme)
+  #t3 <- gTree(children=gList(table3, title3))
+  
+  print("Writting SIRVs metrics table...")
+  write.table(sirv.metrics, paste0(output_directory, "/", output_name, ".SIRVS_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
+  
   melted_t3 <- melt(as.matrix(sirv.metrics), id.vars = "X1")
   colnames(melted_t3) <- c("Metric", "Pipelines", "value")
   melted_t3$value <- as.numeric(melted_t3$value)
@@ -976,9 +1022,13 @@ if (lrgasp == TRUE){
   }
   
   ## FSM
-  title4.1 <- grid::textGrob("Table 4.1 FSM metrics comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
-  table4.1 <- tableGrob(fsm.metrics, theme = table_theme)
-  t4.1 <- gTree(children=gList(table4.1, title4.1))
+  #title4.1 <- grid::textGrob("Table 4.1 FSM metrics comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
+  #table4.1 <- tableGrob(fsm.metrics, theme = table_theme)
+  #t4.1 <- gTree(children=gList(table4.1, title4.1))
+  
+  print("Writting FSMs metrics table...")
+  write.table(fsm.metrics, paste0(output_directory, "/", output_name, ".FSM_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
+  
   melted_t4.1 <- melt(as.matrix(fsm.metrics), id.vars = c("X1","X2"))
   colnames(melted_t4.1) <- c("Metric", "Pipelines", "value")
   melted_t4.1$value <- as.numeric(melted_t4.1$value)
@@ -997,9 +1047,13 @@ if (lrgasp == TRUE){
       scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
   # FSM perc
-  title4.2 <- grid::textGrob("Table 4.2 FSM metrics percentages comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
-  table4.2 <- tableGrob(fsm.metrics_perc, theme = table_theme)
-  t4.2 <- gTree(children=gList(table4.2, title4.2))
+  #title4.2 <- grid::textGrob("Table 4.2 FSM metrics percentages comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
+  #table4.2 <- tableGrob(fsm.metrics_perc, theme = table_theme)
+  #t4.2 <- gTree(children=gList(table4.2, title4.2))
+  
+  print("Writting FSMs metrics table (%)...")
+  write.table(fsm.metrics_perc, paste0(output_directory, "/", output_name, ".FSM_metrics_perc.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
+  
   melted_t4.2 <- melt(as.matrix(fsm.metrics_perc), id.vars = c("X1","X2"))
   colnames(melted_t4.2) <- c("Metric", "Pipelines", "value")
   melted_t4.2$value <- as.numeric(melted_t4.2$value)
@@ -1020,9 +1074,13 @@ if (lrgasp == TRUE){
   
   
   ## ISM
-  title5.1 <- grid::textGrob("Table 5.1 ISM metrics comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
-  table5.1 <- tableGrob(ism.metrics, theme = table_theme)
-  t5.1 <- gTree(children=gList(table5.1, title5.1))
+  #title5.1 <- grid::textGrob("Table 5.1 ISM metrics comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
+  #table5.1 <- tableGrob(ism.metrics, theme = table_theme)
+  #t5.1 <- gTree(children=gList(table5.1, title5.1))
+  
+  print("Writting ISMs metrics table...")
+  write.table(ism.metrics, paste0(output_directory, "/", output_name, ".ISM_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
+  
   melted_t5.1 <- melt(as.matrix(ism.metrics), id.vars = c("X1","X2"))
   colnames(melted_t5.1) <- c("Metric", "Pipelines", "value")
   melted_t5.1$value <- as.numeric(melted_t5.1$value)
@@ -1041,9 +1099,13 @@ if (lrgasp == TRUE){
       scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
   # ISM perc
-  title5.2 <- grid::textGrob("Table 5.2 ISM metrics percentages comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
-  table5.2 <- tableGrob(ism.metrics_perc, theme = table_theme)
-  t5.2 <- gTree(children=gList(table5.2, title5.2))
+  #title5.2 <- grid::textGrob("Table 5.2 ISM metrics percentages comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
+  #table5.2 <- tableGrob(ism.metrics_perc, theme = table_theme)
+  #t5.2 <- gTree(children=gList(table5.2, title5.2))
+  
+  print("Writting ISMs metrics table (%)...")
+  write.table(ism.metrics_perc, paste0(output_directory, "/", output_name, ".ISM_metrics_perc.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
+  
   melted_t5.2 <- melt(as.matrix(ism.metrics_perc), id.vars = c("X1","X2"))
   colnames(melted_t5.2) <- c("Metric", "Pipelines", "value")
   melted_t5.2$value <- as.numeric(melted_t5.2$value)
@@ -1063,9 +1125,13 @@ if (lrgasp == TRUE){
   }
 
   ## NIC
-  title6.1 <- grid::textGrob("Table 6.1 NIC metrics comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
-  table6.1 <- tableGrob(nic.metrics, theme = table_theme)
-  t6.1 <- gTree(children=gList(table6.1, title6.1))
+  #title6.1 <- grid::textGrob("Table 6.1 NIC metrics comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
+  #table6.1 <- tableGrob(nic.metrics, theme = table_theme)
+  #t6.1 <- gTree(children=gList(table6.1, title6.1))
+  
+  print("Writting NICs metrics table...")
+  write.table(nic.metrics, paste0(output_directory, "/", output_name, ".NIC_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
+  
   melted_t6.1 <- melt(as.matrix(nic.metrics), id.vars = c("X1","X2"))
   colnames(melted_t6.1) <- c("Metric", "Pipelines", "value")
   melted_t6.1$value <- as.numeric(melted_t6.1$value)
@@ -1084,9 +1150,13 @@ if (lrgasp == TRUE){
       scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
   # NIC perc
-  title6.2 <- grid::textGrob("Table 6.2 NIC metrics percentages comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
-  table6.2 <- tableGrob(nic.metrics_perc, theme = table_theme)
-  t6.2 <- gTree(children=gList(table6.2, title6.2))
+  #title6.2 <- grid::textGrob("Table 6.2 NIC metrics percentages comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
+  #table6.2 <- tableGrob(nic.metrics_perc, theme = table_theme)
+  #t6.2 <- gTree(children=gList(table6.2, title6.2))
+  
+  print("Writting NICs metrics table (%)...")
+  write.table(nic.metrics_perc, paste0(output_directory, "/", output_name, ".NIC_metrics_perc.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
+  
   melted_t6.2 <- melt(as.matrix(nic.metrics_perc), id.vars = c("X1","X2"))
   colnames(melted_t6.2) <- c("Metric", "Pipelines", "value")
   melted_t6.2$value <- as.numeric(melted_t6.2$value)
@@ -1106,9 +1176,13 @@ if (lrgasp == TRUE){
   }
   
   ## NNC
-  title7.1 <- grid::textGrob("Table 7.1 NNC metrics comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
-  table7.1 <- tableGrob(nnc.metrics, theme = table_theme)
-  t7.1 <- gTree(children=gList(table7.1, title7.1))
+  #title7.1 <- grid::textGrob("Table 7.1 NNC metrics comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
+  #table7.1 <- tableGrob(nnc.metrics, theme = table_theme)
+  #t7.1 <- gTree(children=gList(table7.1, title7.1))
+  
+  print("Writting NNCs metrics table...")
+  write.table(nnc.metrics, paste0(output_directory, "/", output_name, ".NNC_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
+  
   melted_t7.1 <- melt(as.matrix(nnc.metrics), id.vars = c("X1","X2"))
   colnames(melted_t7.1) <- c("Metric", "Pipelines", "value")
   melted_t7.1$value <- as.numeric(melted_t7.1$value)
@@ -1127,9 +1201,13 @@ if (lrgasp == TRUE){
         scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
   # NNC perc
-  title7.2 <- grid::textGrob("Table 7.2 NNC metrics percentages comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
-  table7.2 <- tableGrob(nnc.metrics_perc, theme = table_theme)
-  t7.2 <- gTree(children=gList(table7.2, title7.2))
+  #title7.2 <- grid::textGrob("Table 7.2 NNC metrics percentages comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
+  #table7.2 <- tableGrob(nnc.metrics_perc, theme = table_theme)
+  #t7.2 <- gTree(children=gList(table7.2, title7.2))
+  
+  print("Writting NNC metrics table (%)...")
+  write.table(nnc.metrics_perc, paste0(output_directory, "/", output_name, ".NNC_metrics_perc.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
+  
   melted_t7.2 <- melt(as.matrix(nnc.metrics_perc), id.vars = c("X1","X2"))
   colnames(melted_t7.2) <- c("Metric", "Pipelines", "value")
   melted_t7.2$value <- as.numeric(melted_t7.2$value)
@@ -1256,23 +1334,11 @@ p7.1.3 <- ggplot(NNC.RT, aes(x=sample, y=NNC, fill=sample)) + geom_bar(stat="ide
   labs(title = "RT-Switching incidence on NNC isoforms", x="", y="Percentage of isoforms")+ 
   scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
-# PLOT 9: MCA
-#pres_abs_matrix = ComplexHeatmap::list_to_matrix(l)
-#t_matrix <- as.data.frame(t(pres_abs_matrix))
-#cats = apply(pres_abs_matrix, 2, function(x) nlevels(as.factor(x)))
+# PLOT 9: Jaccard Index
 
-#mca=FactoMineR::MCA(t_matrix, ncp = 5)
+jac_index_mat <- get_jaccard_matrix(pa_table_sum, as.character(code$pipeline))
 
-#mca_obs_df = data.frame(mca$ind$coord, Variable=rownames(mca$ind$coord))
-
-#ggplot(data=mca_obs_df, 
-#       aes(x = Dim.1, y = Dim.2, label = Variale)) +
-#  geom_hline(yintercept = 0, colour = "gray70") +
-#  geom_vline(xintercept = 0, colour = "gray70") +
-#  geom_text(aes(colour=Variable)) +
-#  ggtitle("MCA plot of pipelines") +
-#  mytheme + scale_color_conesa(palette = "complete")
-  
+#mean_jac <- jac_index_mat[lower.tri(jac_index_mat, diag = F)] %>% median()
 
 
 # PLOT 10: UpSet plot
@@ -1357,45 +1423,34 @@ if (opt$upset){
           row_names_max_width = unit(1.5, "cm"),
           row_names_gp = gpar(fontsize = 10)
     )
-  
-  # PLOT 12: UpSet plots for SC
-  print("Upset SC...")
-  #p12 <- list()
-  #for (i in 1:length(res$comparison)) {
-  #  a <- res$comparison[res$comparison$structural_category == str_cat[i], names(res$comparison)[3:length(names(res$comparison))]]
-  #  l <- list()
-  #  for (j in 1:ncol(a)) {
-  #    l[[j]] <- a[,j] %>% na.omit() 
-  #  }
-  #  names(l) <- names(a)
-    ### add right_annotation to look like a heatmap --> Need HeatMap Complex
- #   upset_data = ComplexHeatmap::list_to_matrix(l)
- #   comb_mat = ComplexHeatmap::make_comb_mat(upset_data, mode = "distinct")
- #   code = code[match(set_name(comb_mat), code$pipeline),]
-    
- #   p12[[str_cat[i]]] <-
- #     UpSet(comb_mat, 
- #           pt_size=unit(1, "mm") , lwd = 0.5,
- #           comb_order = order(comb_size(comb_mat), decreasing = T),
- #           set_order = sorted_code,
- #           row_title = str_cat[[i]],
- #           top_annotation = HeatmapAnnotation(
- #             degree = as.character(comb_degree(comb_mat)),
- #             "Intersection\nsize" = anno_barplot(comb_size(comb_mat), 
- #                                                 border = FALSE, 
- #                                                 gp = gpar(fill = "black"),
- #                                                 height = unit(10, "cm")),
- #             annotation_name_side = "left"),
- #           right_annotation = rowAnnotation(
- #             "Set size" = anno_barplot(set_size(comb_mat), 
- #                                       border = FALSE, 
- #                                       gp = gpar(fill = "black")),
- #             group=code$Library),
- #           row_names_max_width = unit(1.5, "cm"),
- #           row_names_gp = gpar(fontsize = 10)
- #     )
- # }
 }
+
+# PLOT 12: Num pipleines that found a UJC vsd mean FL counts
+
+p12 <- ggplot(pa_coord_merged, aes(x=found_by)) +
+  geom_histogram(aes(fill=structural_category), binwidth = 1) + 
+  mytheme +
+  labs(x="Num. Pipelines ", y="Count", 
+       title="Number of pipelines that found a certain UJC",
+       subtitle = "Coloured by Structural Categories")+
+  scale_fill_manual(values=cat.palette, name="Structural Category")  +
+  stat_bin(aes(y=..count.. , label=..count..), geom="text", hjust=-0.1, angle=70, binwidth = 1) 
+
+p12.1 <- ggplot(pa_coord_merged, aes(x=found_by, y=log10(FL_cpm), color=structural_category))+
+  geom_point(alpha=0.7) + 
+  mytheme +
+  labs(x="Num. Pipelines ", y="log10(median CPM)", 
+       title="Number of pipelines that found \na certain UJC vs median CPM") +
+  scale_color_manual(values=cat.palette)
+
+p12.2 <- ggplot(pa_coord_merged, aes(x=found_by, y=log10(FL_cpm)))+
+  geom_point(alpha=0.7, aes(color=structural_category)) + 
+  mytheme +
+  labs(x="Num. Pipelines ", y="log10(median CPM)", 
+       title="Number of pipelines that found \na certain UJC vs median CPM") +
+  scale_color_manual(values=cat.palette) +
+  facet_wrap(~ structural_category, nrow=3) 
+
 
 if (TSS_TTS_coord == TRUE) {
   
@@ -1439,7 +1494,10 @@ invisible(generatePDFreport())
 # -------------------- Output csv
 
 print("Writting CSV file with P/A table of UJC...")
-write.table(res$comparisonPA, paste0(output_directory, "/", output_name, ".csv" ), sep=",", quote = FALSE, row.names = FALSE, col.names = TRUE)
+write.table(res$comparisonPA, paste0(output_directory, "/", output_name, ".pa.csv" ), sep=",", quote = FALSE, row.names = FALSE, col.names = TRUE)
+
+print("Writting pre-BED...")
+write.table(res$iso_metrics, paste0(output_directory, "/", output_name, ".UJC_info.csv" ), sep=",", quote = FALSE, row.names = FALSE, col.names = TRUE)
 
 print("DONE\nExecution finished")
 

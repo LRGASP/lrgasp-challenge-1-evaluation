@@ -405,7 +405,7 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
                                            "False Negative (FN)", "False Positive (FP)", 
                                            "Sensitivity", "Precision",
                                            "Non Redundant Precision","Positive Detection Rate",
-                                           "False Discovery Rate","Redundancy"))
+                                           "False Discovery Rate", "False Detection Rate", "Redundancy"))
   e.SIRVs_results[,"Value"]="-"
   e.SIRVs_results["SIRV transcripts","Value"]=SIRVs_transcripts
   e.SIRVs_results["True Positive detections (TP)","Value"]=as.integer(TP)
@@ -418,7 +418,8 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   e.SIRVs_results["Precision","Value"]=round(RM/SIRVs_transcripts, digits = 2)
   e.SIRVs_results["Non Redundant Precision","Value"]=round(TP/SIRVs_transcripts, digits = 2)
   e.SIRVs_results["Positive Detection Rate", "Value"]=round(length(unique(c(SIRVs_called,SIRVs_called_wrong_ends)))/length(sirv_list), digits = 2)
-  e.SIRVs_results["False Discovery Rate","Value"]=round((SIRVs_transcripts - RM)/SIRVs_transcripts, digits = 2)
+  e.SIRVs_results["False Discovery Rate","Value"]=round((FP + PTP)/SIRVs_transcripts, digits = 2)
+  e.SIRVs_results["False Detection Rate","Value"]=round((FP)/SIRVs_transcripts, digits = 2)
   e.SIRVs_results["Redundancy","Value"]=round(SIRVs_redundancy, digits = 2)
   
 

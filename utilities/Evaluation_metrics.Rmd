@@ -251,7 +251,8 @@ The following metrics and definitions apply to SIRV transcripts:
 - **Precision:**	RM/ SIRV_transcripts
 - **Non_redundant Precision:**	TP/ SIRV_transcripts
 - **Positive Detection Rate:**	unique(TP+PTP)/rSIRVs
-- **False Discovery Rate:**	(SIRV_transcripts - RM)/SIRV_transcripts
+- **False Discovery Rate:**	(FP + PTP)/SIRV_transcripts
+- **False Detection Rate:**	(FP)/SIRV_transcripts
 - **Redundancy:**	(FSM + ISM)/unique(TP+PTP)
 
 **ATENTION**
