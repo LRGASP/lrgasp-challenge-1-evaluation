@@ -680,7 +680,7 @@ exonstructure <- c()
 for (i in 1:limit){
   data <- f_in[[i]]
   data.class <- data[[1]]
-  
+  data.class <- data.class[grep("SIRV|ERCC",data.class$chrom, invert=T),]
   data.class$novelGene <- "Annotated Genes"
   data.class[grep("novelGene", data.class$associated_gene), "novelGene"] <- "Novel Genes"
   data.class$novelGene = factor(data.class$novelGene,
@@ -721,13 +721,14 @@ for (i in 1:limit){
     sum(data.class$novelGene == "Annotated Genes" & data.class$exonCat == "Multi-Exon")
     
   )
+  
 }
 
 sample <- c(rep(names(f_in[1:limit]), each=4))
 number <- rep(c("1","2-3","4-5", ">=6"), times=limit)
 isoPerGene <- data.frame(sample, number, countpergene)
 
-category <- rep(c("Novel-Mono", "Novel-Multi", "Annotated-Mono", "Annotated-Multi"), times=limit)
+category <- rep(c("Novel-Monoexon", "Novel-Multiexon", "Annotated-Monoexon", "Annotated-Multiexon"), times=limit)
 exonstructure <- data.frame(sample, category, exonstructure)
 
 
@@ -862,6 +863,19 @@ pa_table_sum$found_by <- apply(pa_table_sum,1, sum_pipelines, code$pipeline)
 
 pa_coord_merged=merge(res$iso_metrics, pa_table_sum[,c("TAGS", "structural_category", "found_by")], by.x = "LRGASP_id", by.y="TAGS")
 
+####
+length_distribution <- list()
+for (i in 1:limit){
+  data <- f_in[[i]]
+  data.class <- data[[1]]
+  data.class <- data.class[grep("SIRV|ERCC",data.class$chrom, invert=T),]
+  length_distribution[[i]] <- data.class %>%  select(LRGASP_id,experiment_id, length)
+}
+  
+length_distribution <- bind_rows(length_distribution)
+
+
+
 
 #######################################
 #                                     #
@@ -950,7 +964,7 @@ pt1.1 <- ggplot2::ggplot(melted_summary.1, aes(x=ID, y=value, group=variable)) +
   mytheme + scale_color_manual(values=cat.palette1, name="Structural Category")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   labs(title = "Isoforms detected by pipeline",
-       x="", y="Number of isoforms")
+       x="", y="Counts")
 
 
 
@@ -969,7 +983,7 @@ pt1.2 <- ggplot2::ggplot(melted_summary.2, aes(x=ID, y=value, group=variable)) +
   mytheme + scale_color_manual(values=cat.palette1, name="Structural Category")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   labs(title = "UJC detected by pipeline",
-       x="", y="UJC of isoforms")
+       x="", y="Counts UJC")
 
 
 
@@ -1013,10 +1027,10 @@ if (lrgasp == TRUE){
     selected_variable <- melted_t3 %>% filter(Metric==metric)
     pt3[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
       geom_bar(stat="identity") +
-      geom_text(aes(label=value), vjust=-0.3, size=2.5, angle = 90, hjust=0.5)+
+      geom_text(aes(label=value), hjust=1.1, size=3, angle = 90)+
       mytheme + 
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-      labs(title = paste0(metric, "\n\nComparison"),
+      labs(title = paste0("SIRVs:\n\n", metric),
            x="", y=metric) +
       scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
   }
@@ -1037,14 +1051,25 @@ if (lrgasp == TRUE){
   for (i in 1:length(rownames(fsm.metrics))) {
     metric <- rownames(fsm.metrics)[i]
     selected_variable <- melted_t4.1 %>% filter(Metric==metric)
-    pt4.1[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
-      geom_bar(stat="identity") +
-      geom_text(aes(label=value), vjust=-0.3, size=2.5, angle=90, hjust=0.5)+
-      mytheme + 
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-      labs(title = paste0("FSM ", metric, "\n\nComparison"),
-           x="", y=metric) +
-      scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
+    if (metric != "Reference redundancy Level"){
+      pt4.1[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+        geom_bar(stat="identity") +
+        geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
+        mytheme + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+        labs(title = paste0("FSM:\n\n", metric),
+             x="", y="Count") +
+        scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
+    }else{
+      pt4.1[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+        geom_bar(stat="identity") +
+        geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
+        mytheme + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+        labs(title = paste0("FSM:\n\n", metric),
+             x="", y="Redundancy level") +
+        scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
+    }
   }
   # FSM perc
   #title4.2 <- grid::textGrob("Table 4.2 FSM metrics percentages comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
@@ -1064,11 +1089,11 @@ if (lrgasp == TRUE){
     selected_variable <- melted_t4.2 %>% filter(Metric==metric)
     pt4.2[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
       geom_bar(stat="identity") +
-      geom_text(aes(label=value), vjust=-0.3, size=2.5, angle=90, hjust=0.5)+
+      geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
       mytheme + 
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-      labs(title = paste0("FSM ", metric, "\n\nComparison"),
-           x="", y=paste0(metric, " (%)")) +
+      labs(title = paste0("FSM:\n\n", metric),
+           x="", y="Percentage (%)") +
       scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
   
@@ -1089,15 +1114,26 @@ if (lrgasp == TRUE){
   for (i in 1:length(rownames(ism.metrics))) {
     metric <- rownames(ism.metrics)[i]
     selected_variable <- melted_t5.1 %>% filter(Metric==metric)
-    pt5.1[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
-      geom_bar(stat="identity") +
-      geom_text(aes(label=value), vjust=-0.3, size=2.5, angle=90, hjust=0.5)+
-      mytheme + 
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-      labs(title = paste0("ISM ", metric, "\n\nComparison"),
-           x="", y=metric) +
-      scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
-  }
+    if (metric != "Reference redundancy Level"){
+      pt5.1[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+        geom_bar(stat="identity") +
+        geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
+        mytheme + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+        labs(title = paste0("ISM:\n\n", metric),
+             x="", y="Count") +
+        scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
+    }else{
+      pt4.1[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+        geom_bar(stat="identity") +
+        geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
+        mytheme + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+        labs(title = paste0("ISM:\n\n", metric),
+             x="", y="Redundancy level") +
+        scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
+    }
+ }
   # ISM perc
   #title5.2 <- grid::textGrob("Table 5.2 ISM metrics percentages comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
   #table5.2 <- tableGrob(ism.metrics_perc, theme = table_theme)
@@ -1116,11 +1152,11 @@ if (lrgasp == TRUE){
     selected_variable <- melted_t5.2 %>% filter(Metric==metric)
     pt5.2[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
       geom_bar(stat="identity") +
-      geom_text(aes(label=value), vjust=-0.3, size=2.5, angle=90, hjust=0.5)+
+      geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
       mytheme + 
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-      labs(title = paste0("ISM ", metric, "\n\nComparison"),
-           x="", y=paste0(metric, " (%)"))+
+      labs(title = paste0("ISM:\n\n", metric),
+           x="", y="Percentage (%)")+
       scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
 
@@ -1142,11 +1178,11 @@ if (lrgasp == TRUE){
     selected_variable <- melted_t6.1 %>% filter(Metric==metric)
     pt6.1[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
       geom_bar(stat="identity") +
-      geom_text(aes(label=value), vjust=-0.3, size=2.5, angle=90, hjust=0.5)+
+      geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
       mytheme + 
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-      labs(title = paste0("NIC ", metric, "\n\nComparison"),
-           x="", y=metric)+
+      labs(title = paste0("NIC:\n\n", metric),
+           x="", y="Count")+
       scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
   # NIC perc
@@ -1167,11 +1203,11 @@ if (lrgasp == TRUE){
     selected_variable <- melted_t6.2 %>% filter(Metric==metric)
     pt6.2[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
       geom_bar(stat="identity") +
-      geom_text(aes(label=value), vjust=-0.3, size=2.5, angle=90, hjust=0.5)+
+      geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
       mytheme + 
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-      labs(title = paste0("NIC ", metric, "\n\nComparison"),
-           x="", y=paste0(metric, " (%)"))+
+      labs(title = paste0("NIC:\n\n", metric),
+           x="", y="Percentage (%)")+
       scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
   
@@ -1193,11 +1229,11 @@ if (lrgasp == TRUE){
     selected_variable <- melted_t7.1 %>% filter(Metric==metric)
     pt7.1[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
       geom_bar(stat="identity") +
-      geom_text(aes(label=value), vjust=-0.3, size=2.5, angle=90, hjust=0.5)+
+      geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
       mytheme +
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-      labs(title = paste0("NNC ", metric, "\n\nComparison"),
-           x="", y=metric)+
+      labs(title = paste0("NNC:\n\n ", metric),
+           x="", y="Count")+
         scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
   # NNC perc
@@ -1218,11 +1254,11 @@ if (lrgasp == TRUE){
     selected_variable <- melted_t7.2 %>% filter(Metric==metric)
     pt7.2[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
       geom_bar(stat="identity") +
-      geom_text(aes(label=value), vjust=-0.3, size=2.5, angle=90, hjust=0.5)+
+      geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
       mytheme + 
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-      labs(title = paste0("NNC ", metric, "\n\nComparison"),
-           x="", y=paste0(metric, " (%)"))+
+      labs(title = paste0("NNC:\n\n", metric),
+           x="", y="Percentage (%)")+
       scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
   
@@ -1238,7 +1274,7 @@ isoPerGene$sample <- factor(isoPerGene$sample, levels=sorted_pipelines)
 
 p1.1 <- ggplot(isoPerGene, aes(fill=number, y=countpergene, x=sample)) +
   geom_bar(position = "fill", stat = "identity") +
-  mytheme + scale_fill_manual(values = myPalette) + 
+  mytheme + scale_fill_manual(values = myPalette, name="Num. isoforms per gene") + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   labs(title = "Number of isoforms per gene",
        x="", y="Percentage of genes")
@@ -1248,9 +1284,9 @@ exonstructure$sample <- factor(exonstructure$sample, levels=sorted_pipelines)
 
 p1.2 <- ggplot(exonstructure, aes(fill=category, y=exonstructure, x=sample)) +
   geom_bar(position = "fill", stat = "identity") +
-  scale_fill_manual(values = myPalette) + mytheme +
+  scale_fill_manual(values = myPalette, name="") + mytheme +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + 
-  labs(title = "Type of isoforms", x="", y="Percentage of genes")
+  labs(title = "Type of isoforms", x="", y="Percentage (%)")
 
 # PLOT 2: structural category distribution
 
@@ -1266,48 +1302,60 @@ p2 <- ggplot(df_SC, aes(fill=SC, y=value, x=ID)) +
 for (i in 1:length(dist.list)){
   dist.list[[i]]$sample <- factor(dist.list[[i]]$sample, levels=sorted_pipelines)
 }
-p4.1 <- ggplot(dist.list[[1]], aes(y=sample, x=(dist), fill = sample)) + 
-  geom_density_ridges(scale=4, alpha=0.7) +
+p4.1 <- ggplot(dist.list[[1]], aes(x=sample, y=(dist*-1))) + 
+  geom_violin(alpha=0.7, aes(fill=sample)) +
+  geom_boxplot(width=0.05, outlier.shape = NA) +
   mytheme +
-  labs(title = "Distance to TSS of FSM isoforms", x="", y="Density") +
-  xlim(c(-200,200))  +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  labs(title = "Distance to TSS of FSM isoforms", x="", y="Distance (bp)") +
+  ylim(c(-200,200))  +
   scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
-p4.2 <- ggplot(dist.list[[2]], aes(y=sample, x=(dist), fill = sample)) + 
-  geom_density_ridges(scale=4, alpha=0.7) +
+p4.2 <- ggplot(dist.list[[2]], aes(x=sample, y=(dist*-1))) + 
+  geom_violin(alpha=0.7, aes(fill=sample)) +
+  geom_boxplot(width=0.05, outlier.shape = NA) +
   mytheme +
-  labs(title = "Distance to TSS of ISM isoforms", x="", y="Density") +
-  xlim(c(-2000,2000))  +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  labs(title = "Distance to TSS of ISM isoforms", x="", y="Distance (bp)") +
+  ylim(c(-2000,2000))  +
   scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
 # PLOT5: distance to TTS
-p5.1 <- ggplot(dist.list[[3]], aes(y=sample, x=(dist), fill = sample)) + 
-  geom_density_ridges(scale=4, alpha=0.7) +
+p5.1 <- ggplot(dist.list[[3]], aes(x=sample, y=(dist*-1))) + 
+  geom_violin(alpha=0.7, aes(fill=sample)) +
+  geom_boxplot(width=0.05, outlier.shape = NA) +
   mytheme +
-  labs(title = "Distance to TTS of FSM isoforms", x="", y="Density") +
-  xlim(c(-200,200)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  labs(title = "Distance to TTS of FSM isoforms", x="", y="Distance (bp)") +
+  ylim(c(-200,200)) +
   scale_fill_conesa(palette = "complete") + theme(legend.position = "none") 
 
-p5.2 <- ggplot(dist.list[[4]], aes(y=sample, x=(dist), fill = sample)) + 
-  geom_density_ridges(scale=4, alpha=0.7) +
+p5.2 <- ggplot(dist.list[[4]], aes(x=sample, y=(dist*-1))) + 
+  geom_violin(alpha=0.7, aes(fill=sample)) +
+  geom_boxplot(width=0.05, outlier.shape = NA) +
   mytheme +
-  labs(title = "Distance to TTS of ISM isoforms", x="", y="Density") +
-  xlim(c(-2000,2000)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  labs(title = "Distance to TTS of ISM isoforms", x="", y="Distance (bp)") +
+  ylim(c(-2000,2000)) +
   scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
 # PLOT 6: distance to CAGE peak
-p6.1 <- ggplot(dist.list[[5]], aes(y=sample, x=(dist), fill = sample)) + 
-  geom_density_ridges(scale=4, alpha=0.7) +
+p6.1 <- ggplot(dist.list[[5]], aes(x=sample, y=(dist*-1))) + 
+  geom_violin(alpha=0.7, aes(fill=sample)) +
+  geom_boxplot(width=0.05, outlier.shape = NA) +
   mytheme +
-  labs(title = "Distance to closest CAGE peak (FSM only)", x="", y="Density") +
-  xlim(c(-200,200)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylim(c(-200,1000))+
+  labs(title = "Distance to closest CAGE peak (FSM only)", y="Distance (bp)", x="") +
   scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
-p6.2 <- ggplot(dist.list[[6]], aes(y=sample, x=(dist), fill = sample)) + 
-  geom_density_ridges(scale=4, alpha=0.7) +
+p6.2 <- ggplot(dist.list[[6]], aes(x=sample, y=(dist*-1))) + 
+  geom_violin(alpha=0.7, aes(fill=sample)) +
+  geom_boxplot(width=0.05, outlier.shape = NA) +
   mytheme +
-  labs(title = "Distance to closest CAGE peak (ISM only)", x="", y="Density") +
-  xlim(c(-200,2000)) +
+  ylim(c(-200,1000))+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  labs(title = "Distance to closest CAGE peak (ISM only)", y="Distance (bp)", x="") +
   scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
 
@@ -1333,6 +1381,29 @@ p7.1.3 <- ggplot(NNC.RT, aes(x=sample, y=NNC, fill=sample)) + geom_bar(stat="ide
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   labs(title = "RT-Switching incidence on NNC isoforms", x="", y="Percentage of isoforms")+ 
   scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
+
+# PLOT 8: Length Distribution
+length_distribution$experiment_id <- factor(length_distribution$experiment_id, levels=sorted_pipelines)
+if (max(length_distribution$length)>30000){
+  p8 <- ggplot(length_distribution, aes(x=experiment_id, y=length))+
+    geom_violin(alpha=0.7 , aes(fill=experiment_id)) +
+    geom_boxplot(width=0.05, outlier.shape = NA) +
+    mytheme +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+    ylim(c(0,30000)) +
+    labs(title = "Transcript length distribution", x="", y="Length (bp)") + 
+    scale_fill_conesa(palette = "complete") + theme(legend.position = "none") 
+  
+}else{
+  p8 <- ggplot(length_distribution, aes(x=experiment_id, y=length))+
+    geom_violin(alpha=0.7 , aes(fill=experiment_id)) +
+    geom_boxplot(width=0.05, outlier.shape = NA) +
+    mytheme +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+    labs(title = "Transcript length distribution", x="", y="Length (bp)") + 
+    scale_fill_conesa(palette = "complete") + theme(legend.position = "none") 
+}
+
 
 # PLOT 9: Jaccard Index
 
@@ -1426,30 +1497,40 @@ if (opt$upset){
 }
 
 # PLOT 12: Num pipleines that found a UJC vsd mean FL counts
-
-p12 <- ggplot(pa_coord_merged, aes(x=found_by)) +
+pa_coord_merged_wo_SIRV=pa_coord_merged[!grepl("SIRV", pa_coord_merged$LRGASP_id),]
+p12 <- ggplot(pa_coord_merged_wo_SIRV, aes(x=found_by)) +
   geom_histogram(aes(fill=structural_category), binwidth = 1) + 
   mytheme +
   labs(x="Num. Pipelines ", y="Count", 
        title="Number of pipelines that found a certain UJC",
        subtitle = "Coloured by Structural Categories")+
   scale_fill_manual(values=cat.palette, name="Structural Category")  +
-  stat_bin(aes(y=..count.. , label=..count..), geom="text", hjust=-0.1, angle=70, binwidth = 1) 
+  stat_bin(aes(y=..count.. , label=..count..), geom="text", size=2, vjust=-0.2, angle=0, binwidth = 1) 
 
-p12.1 <- ggplot(pa_coord_merged, aes(x=found_by, y=log10(FL_cpm), color=structural_category))+
-  geom_point(alpha=0.7) + 
+p12.1 <- list()
+sc_levels <- levels(as.factor(pa_coord_merged_wo_SIRV$structural_category))
+for (i in 1:length(sc_levels)) {
+    metric <- sc_levels[i]
+    selected_variable <- pa_coord_merged_wo_SIRV %>% filter(structural_category==metric)
+    p12.1[[i]] <- ggplot(selected_variable, aes(x=factor(found_by), y=log10(FL_cpm)))+
+      geom_violin(alpha=0.7, size=0.5, aes(fill=structural_category)) +
+      geom_boxplot(width=0.05, outlier.shape = NA) +
+      mytheme +
+      labs(x="Num. Pipelines", y="log10(median CPM)", 
+      title="Number of pipelines that found \n\na certain UJC vs median CPM",
+      subtitle=metric) +
+      scale_fill_manual(values=cat.palette[metric])
+}
+
+
+p12.2 <- ggplot(pa_coord_merged_wo_SIRV, aes(x=factor(found_by), y=log10(FL_cpm)))+
+  geom_violin(alpha=0.7, aes(fill=structural_category)) +
+  geom_boxplot(width=0.05, outlier.shape = NA) + 
   mytheme +
   labs(x="Num. Pipelines ", y="log10(median CPM)", 
-       title="Number of pipelines that found \na certain UJC vs median CPM") +
-  scale_color_manual(values=cat.palette)
-
-p12.2 <- ggplot(pa_coord_merged, aes(x=found_by, y=log10(FL_cpm)))+
-  geom_point(alpha=0.7, aes(color=structural_category)) + 
-  mytheme +
-  labs(x="Num. Pipelines ", y="log10(median CPM)", 
-       title="Number of pipelines that found \na certain UJC vs median CPM") +
-  scale_color_manual(values=cat.palette) +
-  facet_wrap(~ structural_category, nrow=3) 
+       title="Number of pipelines that found \n\na certain UJC vs median CPM") +
+  scale_fill_manual(values=cat.palette) +
+  facet_wrap(~ structural_category, nrow=3)
 
 
 if (TSS_TTS_coord == TRUE) {
@@ -1458,20 +1539,20 @@ if (TSS_TTS_coord == TRUE) {
   
   a <- bind_rows(res$classifications, .id = "experiment_id")
   a$experiment_id <- factor(a$experiment_id, levels=sorted_pipelines)
-  p13 <- ggplot(a, aes(y=experiment_id, x=(sdTSS), fill=experiment_id)) +
-    geom_density_ridges(scale=4, alpha=0.6) +
+  p13 <- ggplot(a, aes(y=experiment_id, x=(sdTSS))) +
+    geom_violin(alpha=0.7, aes(fill=experiment_id)) +
+    geom_boxplot(width=0.05, outlier.shape = NA) +
     mytheme +
-    labs(title = "Standard deviation of genomic TSS coordinates", x="SD TSS coordinates", y="Density") +
-    xlim(c(0,500)) +
+    labs(title = "Standard deviation of genomic TSS coordinates", x="SD", y="") +
     scale_fill_conesa(palette = "complete") + theme(legend.position = "none") 
   
   
   # PLOT 14: TTS standard deviation per pipeline
-  p14 <- ggplot(a, aes(y=experiment_id, x=(sdTTS), fill=experiment_id)) +
-    geom_density_ridges(scale=4, alpha=0.6) +
+  p14 <- ggplot(a, aes(y=experiment_id, x=(sdTTS))) +
+    geom_violin(alpha=0.7, aes(fill=experiment_id)) +
+    geom_boxplot(width=0.05, outlier.shape = NA) +
     mytheme +
-    labs(title = "Standard deviation of genomic TTS coordinates", x="SD TTS coordinates", y="Density") +
-    xlim(c(0,500)) +
+    labs(title = "Standard deviation of genomic TTS coordinates", x="SD", y="") +
     scale_fill_conesa(palette = "complete") + theme(legend.position = "none") 
   
 }
@@ -1498,6 +1579,9 @@ write.table(res$comparisonPA, paste0(output_directory, "/", output_name, ".pa.cs
 
 print("Writting pre-BED...")
 write.table(res$iso_metrics, paste0(output_directory, "/", output_name, ".UJC_info.csv" ), sep=",", quote = FALSE, row.names = FALSE, col.names = TRUE)
+
+print("Saving the environment...")
+save.image(file=paste0(output_directory,"/",output_name,".environment.RData"))
 
 print("DONE\nExecution finished")
 

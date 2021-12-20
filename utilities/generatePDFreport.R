@@ -15,7 +15,7 @@ generatePDFreport = function()
   # Plot Table 1.2 (UJC collapsed)
   #grid.arrange(t1.2)
   print(pt1.2)
-  
+  print("Plotting gene characterization...") 
   # Gene Characterization
   s <- textGrob("Gene Characterization", gp=gpar(fontface="italic", fontsize=17), vjust = 0)
   grid.arrange(s)
@@ -23,6 +23,7 @@ generatePDFreport = function()
   print(p1.2)
   print(p2)
   
+  print("Plotting distances to TSS/TTS..")
   # Distances to TSS and TTS of FSM and ISM
   s <- textGrob("Distance to annotated TSS and TTS", gp=gpar(fontface="italic", fontsize=17), vjust = 0)
   grid.arrange(s)
@@ -32,6 +33,9 @@ generatePDFreport = function()
   print(p5.2)
   print(p6.1)
   print(p6.2)
+  print(p8)
+  
+  print("Plotting Jaccard...")
   # Jaccard Index
   s <- textGrob("Presence/absence analysis \nof UJC across pipelines", gp=gpar(fontface="italic", fontsize=17), vjust = 0)
   grid.arrange(s)
@@ -39,12 +43,15 @@ generatePDFreport = function()
            title="Pair-wise Jaccard index between submissions", mar = c(2,1.5,1.5,1.5),
            col = COL2("RdBu", 100 ))
   print(p12)
-  print(p12.1)
+  for (i in 1:length(p12.1)) {
+    print(p12.1[[i]])
+  }
   print(p12.2)
   
   
   # Intersections
   if (opt$upset){
+    print("Plotting Upset plots...")
     s <- textGrob("Intersection regarding to UJC", gp=gpar(fontface="italic", fontsize=17), vjust = 0)
     grid.arrange(s)
     print(p10)
@@ -56,12 +63,13 @@ generatePDFreport = function()
   }
   
   # Strandard Deviation of TSS and TTS
+  print("Plotting SD...")
   s <- textGrob("Standard Deviation of TSS and TTS", gp=gpar(fontface="italic", fontsize=17), vjust = 0)
   grid.arrange(s)
   print(p13)
   print(p14)
 
-  
+  print("Plotting metrics...")
   s <- textGrob("LRGASP metrics Comparison", gp=gpar(fontface="italic", fontsize=17), vjust = 0)
   grid.arrange(s)
   # SIRVs

@@ -29,7 +29,8 @@ fiveTP_function=function(X){
 }
 
 threeTP_function=function(X){
-  !is.na(X["polyA_motif"])
+  r <- if(X["within_cage_peak"]=="True"){TRUE}else{FALSE}
+  (!is.na(X["polyA_motif"]) ) | r
 }
 
 allTP_function=function(X){
