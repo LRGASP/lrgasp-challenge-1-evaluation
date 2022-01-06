@@ -185,12 +185,12 @@ iso_analysis <- function(l_class){
   l_class <- purrr::map(l_class,calculate_CPM)
   class_bind <- bind_rows(l_class)
   class_bind <- data.table::data.table(class_bind)
-  
+
   class_compact <- class_bind[, list(
     exons=unique(exons),
     length=as.numeric(median(unlist(length))),
     FL_cpm=as.numeric(median(CPM)),
-    gene=unique(associated_gene) %>% paste(collapse="-")
+    gene=unique(unlist(associated_gene)) %>% paste(collapse="-")
   ), by="LRGASP_id"]
   
   class_compact <- as.data.frame(class_compact)
@@ -208,7 +208,7 @@ iso_analysis <- function(l_class){
     exons=class_compact$exons,
     length=class_compact$length,
     iso_exp=class_compact$FL_cpm,
-    gene=class_compatc$gene
+    gene=class_compact$gene
   )}
   
   return(df_iso)
@@ -487,7 +487,11 @@ if (is.null(directory)) {
 }
 
 code=read.csv(opt$code, header=T)
-colnames(code) <- c("pipeline", "Library", "Platform", "Data_Category")
+if (dim(code)[2]==4){
+  colnames(code) <- c("pipeline", "Library", "Platform", "Data_Category")
+}else if (dim(code)[2]){
+  colnames(code) <- c("pipeline", "Library", "Platform", "Data_Category","Lab")
+}
 code=code[order(code$pipeline),]
 
 
@@ -544,6 +548,8 @@ for (i in 1:length(class_in)) {
   idx <- substring(f, (start+2), (end-1))
   if (idx %in% code$pipeline){
     classification <- read.table(class_in[[i]], header = T, sep = "\t")
+    classification$structural_category <- gsub(classification$structural_category, pattern="Genic_", replacement = "Genic")
+    classification$LRGASP_id <- gsub(classification$LRGASP_id, pattern="Genic_", replacement = "Genic")
     junctions <- read.table(junct_in[[i]], header = T, sep = "\t")
     f_in[[idx]] <- list(classification, junctions)
   }
@@ -608,7 +614,7 @@ if (class(res) == "try-error"){
 
 
 # -------------------- Comparison with res classification files
-print("Comparing comparisson results between samples...")
+print("Comparing results between samples...")
 
 # ----- Define max number of samples in plots
 
@@ -621,7 +627,7 @@ if (length(f_in) <= 100){
 
 #str_cat <- unique(f_in[[1]][[1]]$structural_category)
 #str_cat <- c("full-splice_match", "incomplete-splice_match", "novel_in_catalog", "novel_not_in_catalog", "antisense", "fusion", "genic", "intergenic")
-str_cat <- c("FSM", "ISM", "NIC", "NNC", "Antisense", "Fusion", "Genic_Genomic", "Genic_Intron", "Intergenic")
+str_cat <- c("FSM", "ISM", "NIC", "NNC", "Antisense", "Fusion", "GenicGenomic", "GenicIntron", "Intergenic")
 
 
 # ----- Generates dataframe with a summary of the SQANTI3 classification files
@@ -924,12 +930,12 @@ print("Generating plots for the report...")
 myPalette = c("#6BAED6","#FC8D59","#78C679","#EE6A50","#969696","#66C2A4", "goldenrod1", "darksalmon", "#41B6C4","tomato3", "#FE9929")
 
 cat.palette = c( "FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
-                 "NNC"="#EE6A50", "Genic-Genomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
-                 "Intergenic" = "darksalmon", "Genic-Intron"="#41B6C4")
+                 "NNC"="#EE6A50", "GenicGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
+                 "Intergenic" = "darksalmon", "GenicIntron"="#41B6C4")
 
 cat.palette1 = c("total"="black", "FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
-                "NNC"="#EE6A50", "Genic-Genomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
-                "Intergenic" = "darksalmon", "Genic-Intron"="#41B6C4", "uniq_id"="black")
+                "NNC"="#EE6A50", "GenicGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
+                "Intergenic" = "darksalmon", "GenicIntron"="#41B6C4", "uniq_id"="black")
 
 
 mytheme <- theme_classic(base_family = "Helvetica") +

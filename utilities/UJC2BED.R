@@ -55,6 +55,22 @@ pb_captrap_pipelines <- pb_captrap_pipelines$pipelineCode %>% as.character()
 
 get_bed <- function(coord){
   UJC_split <- unlist(strsplit(as.character(coord[1]), '_'))
+  chrom_type="normal"
+  if (as.character(UJC_split[3])!= "+" & as.character(UJC_split[3])!= "-"){
+    if (startsWith(as.character(UJC_split[4]), "random")){
+      chromosome <- paste(c(as.character(UJC_split[2]),as.character(UJC_split[3]),as.character(UJC_split[4])),
+                          collapse = "_")
+      strand <- as.character(UJC_split[5])
+      chrom_type="random"
+    }else{
+      chromosome <- paste(c(as.character(UJC_split[2]),as.character(UJC_split[3])), collapse = "_")
+      strand <- as.character(UJC_split[4])
+      chrom_type="unknown"
+    }
+  }else{
+    chromosome <- as.character(UJC_split[2])
+    strand <- as.character(UJC_split[3])
+  }
   coord["exons"]=as.integer(coord["exons"])
   tss=as.bigz(gsub("\\..*","",coord['mean.median.TSS']))
   tts=as.bigz(gsub("\\..*","",coord['mean.median.TTS']))
@@ -63,12 +79,12 @@ get_bed <- function(coord){
   if (coord["exons"]==1){
     l=end-start
     all <- c(
-      as.character(UJC_split[2]),
+      chromosome,
       as.character(start),
       as.character(end),
       as.character(coord['LRGASP_id']),
       '40',
-      as.character(UJC_split[3]), 
+      strand, 
       as.character(start),
       as.character(start),
       "255,0,0",
@@ -78,21 +94,33 @@ get_bed <- function(coord){
       as.character(coord["gene"])
     )
   }else{
-    blocks=as.bigz(c(start,UJC_split[seq(5,length(UJC_split),by = 2)]))
-    block_ends=c(as.bigz(UJC_split[seq(4,length(UJC_split),by = 2)]), end)
-    block_starts=blocks - start
-    block_starts=as.character(block_starts)
+    if (chrom_type == "normal"){
+      blocks=as.bigz(c(start,(UJC_split[seq(5,length(UJC_split),by = 2)])))
+      block_ends=c(as.bigz(UJC_split[seq(4,length(UJC_split),by = 2)]), end)
+    }else if (chrom_type == "unknown"){
+      blocks=as.bigz(c(start,(UJC_split[seq(6,length(UJC_split),by = 2)])))
+      block_ends=c(as.bigz(UJC_split[seq(5,length(UJC_split),by = 2)]), end)
+    } else {
+      blocks=as.bigz(c(start,(UJC_split[seq(7,length(UJC_split),by = 2)])))
+      block_ends=c(as.bigz(UJC_split[seq(6,length(UJC_split),by = 2)]), end)
+    }
+    block_starts=blocks - (start)
     block_sizes=block_ends - (blocks+1)
+    if (block_sizes[length(block_sizes)]==0){
+      block_sizes[-1]=1
+      end=end+1
+    }
+    block_starts=as.character(block_starts)
     block_sizes=as.character(block_sizes)
     block_sizes=paste(block_sizes, collapse = ",")
     block_starts=paste(block_starts, collapse=",")
     all <- c(
-      as.character(UJC_split[2]),
+      chromosome,
       as.character(start),
-      as.character(end),
+      as.character(end-1),
       as.character(coord['LRGASP_id']),
       '40',
-      as.character(UJC_split[3]),
+      strand,
       as.character(start),
       as.character(start),
       "255,0,0",
@@ -131,7 +159,11 @@ get_barcode <- function(pa){
   lib=paste(c(n_cdna,n_drna,n_captrap,n_r2c2,n_fs), collapse = ",")
   dat=paste(c(n_lo,n_ls,n_fs), collapse = ",")
   plat_lib=paste(c(n_pb_cdna,n_pb_captrap,n_ont_cdna,n_ont_drna,n_ont_captrap,n_ont_r2c2), collapse = ",")
-  bc=str_c(plat,lib,dat,plat_lib,sep = ";")
+  bc=str_c(plat,lib,dat,plat_lib,
+           n_pb, n_ont, n_fs,
+           n_cdna, n_drna, n_captrap, n_r2c2, n_fs,
+           n_lo, n_ls, n_fs,
+           sep = ";")
   return(bc)
 }
 
@@ -148,6 +180,10 @@ bed_file$associated_gene = apply(bed_file,1, function(x){
   if (startsWith(g, "novelGene")){
     g_id <- paste("novelGene",  trimws(as.character(x["num"])), sep = "-")
   }else{
+    if (nchar(g)>250){
+      tmp_genes <- strsplit(g,split="-") %>% unlist()
+      g <- paste(tmp_genes[1:3], collapse="-")
+    }
     g_id <- g
   }
   return(g_id)
@@ -159,7 +195,10 @@ rownames(pa_table) <- pa_table$TAGS
 pa_table$barcode <- apply(pa_table,1,get_barcode)
 split_bc <- str_split(pa_table$barcode, pattern = ";", simplify = T) %>% as.data.frame()
 rownames(split_bc) <- pa_table$TAGS
-colnames(split_bc) <- c("Platform", "Library", "Data", "Platform_Library")
+colnames(split_bc) <- c("Platform", "Library", "Data", "Platform_Library",
+                        "PB_count", "ONT_count", "PlatFS_count",
+                        "cDNA_count", "dRNA_count", "CapTrap_count", "R2C2_count", "LibFS_count",
+                        "LO_count", "LS_count", "DataCatFS_count")
 
 final_bed=merge(bed_file, split_bc, by=0)
 coord_table$num = seq_along(coord_table$LRGASP_id)
@@ -172,8 +211,25 @@ coord_table[which(is.na(coord_table$SD.TSS)),"SD.TSS"] <- "NaN"
 coord_table[which(is.na(coord_table$SD.TTS)),"SD.TTS"] <- "NaN"
 
 final_bed=merge(final_bed, coord_table[,c("LRGASP_id", "SD.TSS", "SD.TTS", "exons", "length", "FL_cpm", "small_id")], by.x="id", by.y="LRGASP_id")
-final_bed=final_bed[,c("chrom", "start", "end", "small_id", "Q", "strand", "thickStart", "thickEnd", "rgb", "blockCount", "blockSizes", "blockStarts",
-                       "Platform", "Library", "Data","Platform_Library", "SD.TSS", "SD.TTS", "exons", "length", "FL_cpm", "associated_gene")]
+
+# Change RGB color so they will represent the relative abundance of the isoform
+RGB_SCALE = c('0,0,0', '26,0,0', '51,0,0', '77,0,0', '102,0,0',
+             '128,0,0', '153,0,0', '179,0,0', '204,0,0', '230,0,0',
+             '255,0,0', '255,26,26', '255,51,51', '255,77,77', '255,102,102',
+             '255,128,128', '255,153,153', '255,179,179', '255,204,204', '255,230,230')
+RGB_SCALE = rev(RGB_SCALE)
+NUM_RGB = length(RGB_SCALE)
+
+final_bed <- final_bed %>% 
+  group_by(associated_gene) %>%
+  mutate(new_rgb=cut(log10(as.numeric(FL_cpm)), breaks=NUM_RGB, labels=RGB_SCALE)) %>% 
+  as.data.frame()
+
+final_bed=final_bed[,c("chrom", "start", "end", "small_id", "Q", "strand", "thickStart", "thickEnd", "new_rgb", "blockCount", "blockSizes", "blockStarts",
+                       "Platform", "Library", "Data","Platform_Library", "SD.TSS", "SD.TTS", "exons", "length", "FL_cpm", "associated_gene", 
+                       "PB_count", "ONT_count", "PlatFS_count",
+                       "cDNA_count", "dRNA_count", "CapTrap_count", "R2C2_count", "LibFS_count",
+                       "LO_count", "LS_count", "DataCatFS_count")]
 
 bed_file <- paste(c(name_bed, ".bed"), collapse="")
 write.table(final_bed, file=bed_file,sep='\t', quote = FALSE, col.names = FALSE, row.names = FALSE)
