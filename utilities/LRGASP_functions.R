@@ -25,17 +25,16 @@ ref3TP_gene_function=function(X){
 }
 
 fiveTP_function=function(X){
-  if(X["within_cage_peak"]=="True"){TRUE}else{FALSE}
+  if(isTRUE(as.logical(X["within_cage_peak"]))){TRUE}else{FALSE}
 }
 
 threeTP_function=function(X){
-  r <- if(X["within_cage_peak"]=="True"){TRUE}else{FALSE}
-  (!is.na(X["polyA_motif"]) ) | r
+  if(isTRUE(as.logical(X["within_polya_site"])) || !is.na(X["polyA_motif"]) ){TRUE}else{FALSE}
 }
 
 allTP_function=function(X){
-  as.logical(as.logical(abs(as.integer(X["diff_to_gene_TSS"]))<=50) | X["within_cage_peak"]=="True") & 
-    (as.logical(abs(as.integer(X["diff_to_gene_TTS"]))<=50) | as.logical(!is.na(X["polyA_motif"])))
+  (abs(as.integer(X["diff_to_gene_TSS"]))<=50 || isTRUE(as.logical(X["within_cage_peak"]))) && 
+  (abs(as.integer(X["diff_to_gene_TTS"]))<=50 || !is.na(X["polyA_motif"]))
 }
 
 allTP_norm=function(X){
@@ -56,6 +55,7 @@ mean_cov_all=function(X, sqanti_data_junc){
   all_SJ=sqanti_data_junc[which(sqanti_data_junc$isoform==X["isoform"]),]
   mean(all_SJ$total_coverage)
 }
+
 
 SJ_wo_cov=function(X, sqanti_data_junc ){
   all_SJ=sqanti_data_junc[which(sqanti_data_junc$isoform==X["isoform"]),]
@@ -84,7 +84,7 @@ non_canonical_SJ=function(X, sqanti_data_junc ){
 }
 
 allTP_function_novel=function(X){
-  return(as.logical((abs(as.integer(X["diff_to_gene_TSS"]))<=50) | X["within_cage_peak"]=="True") &
+  return(as.logical((abs(as.integer(X["diff_to_gene_TSS"]))<=50) | isTRUE(as.logical(X["within_cage_peak"]))) &
            (as.logical(abs(as.integer(X["diff_to_gene_TTS"]))<=50) | !is.na(X["polyA_motif"])) &
            (as.logical(as.integer(X["min_cov"])>0)))
 }

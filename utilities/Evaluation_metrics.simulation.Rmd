@@ -1,0 +1,291 @@
+---
+title: "Evaluation metrics LRGASP -- Challenge 1"
+output: html_document
+params:
+  date: !r Sys.Date()
+  output.directory: ""   #folder where the evaluation output will be saved
+  Name: "Example"
+  Platform: "PacBio"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+getwd()
+```
+
+```{r, echo=FALSE}
+## These are a few libraries that must be loaded for the plots and also a couple of variables to make them "nice"
+
+suppressWarnings(library(ggplot2))
+suppressWarnings(library(scales))
+suppressWarnings(library(knitr))
+
+myPalette = c("#6BAED6","#FC8D59","#78C679","#EE6A50","#969696","#66C2A4", "goldenrod1", "darksalmon", "#41B6C4","tomato3", "#FE9929")
+
+mytheme <- theme_classic(base_family = "Helvetica") +
+  theme(axis.line.x = element_line(color="black", size = 0.4),
+        axis.line.y = element_line(color="black", size = 0.4)) +
+  theme(axis.title.x = element_text(size=14),
+        axis.text.x  = element_text(size=13),
+        axis.title.y = element_text(size=14),
+        axis.text.y  = element_text(vjust=0.5, size=13) ) +
+  theme(legend.text = element_text(size = 10), legend.title = element_text(size=11), legend.key.size = unit(0.5, "cm")) +
+  theme(plot.title = element_text(lineheight=.4, size=13)) +
+  theme(plot.margin = unit(c(2.5,1,1,1), "cm")) 
+
+```
+
+## Your submission: `r params$Name` on `r params$Platform` data
+
+```{r, echo=FALSE}
+setwd(params$output.directory)
+
+results_file <- dir(pattern = "*_results.RData")
+load(results_file)
+names(all.results) <- c("FSM", "ISM", "NIC", "NNC", "tot.0.sim", "tot.1.sim", "tot.5.sim", "novel.sim", "global", "global_SJ")
+FSM_class_file=dir(pattern = "*_FSM.RData")
+load(FSM_class_file)
+ISM_class_file=dir(pattern = "*_ISM.RData")
+load(ISM_class_file)
+NIC_class_file=dir(pattern = "*_NIC.RData")
+load(NIC_class_file)
+NNC_class_file=dir(pattern = "*_NNC.RData")
+load(NNC_class_file)
+
+``` 
+
+
+## Background
+
+Challenge 1 is evaluated according to four criteria:
+
+1. Broad GENCODE Annotation
+2. Subset of manually curated loci selected by GENCODE
+3. sim Lexogen Set 4
+4. Simulated data.
+
+The LRGASP uses SQANTI categories to define evaluating features and metrics for Challenge 1.
+
+LRGASP Challenge 1 Definitions:
+
+- **Full Splice Match (FSM):** Transcripts matching a reference transcript at all splice junctions.
+- **Incomplete Splice Match (ISM):** Transcripts matching consecutive, but not all, splice junctions of the reference transcripts.
+- **Novel in Catalog (NIC):**	Transcripts containing new combinations of already annotated splice junctions or novel splice junctions formed from already annotated donors and acceptors.
+- **Novel Not in Catalog (NNC):**	Transcripts using novel donors and/or acceptors.
+- **Reference Match (RM):**	FSM transcript with 5´ and 3´ends within 50 nts of the TSS/TTS annotation.
+- **3´ polyA supported:**	Transcript with polyA motif support at the 3´end.
+- **5´ CAGE supported:**	Transcript with CAGE support at the 5´end.
+- **3´ reference supported:**	Transcript with 3´end within 50 nts from reference transcript or gene TTS.
+- **5´ reference supported:**	Transcript with 5´end within 50 nts from reference transcript or gene TSS.
+- **Supported Reference Transcript Model (SRTM):**	FSM/ISM transcript with 5´ end within 50nts of the TSS or has CAGE support AND 3´ end within 50nts of the TTS or has  polyA motif support
+- **Supported Novel Transcript Model (SNTM):**	NIC/NNC transcript with 5´ end within 50nts of the TSS or CAGE support AND 3´ end within 50nts of the TTS or polyA motif support  AND Illumina read support at novel junctions
+- **Redundancy:**	# LR transcript models / reference model
+- **Intron retention (IR):** level	Number of IR within the NIC category
+- **Illumina Splice Junction (SJ):** Support	% SJ in transcript model with Illumina support
+- **Full Illumina Splice Junction Support:**	% transcripts in category with all SJ supported
+- **% Novel Junctions:**	# of new junctions / total # junctions
+- **% Non-canonical junctions:**	# of non-canonical junctions / total # junctions
+- **% Non-canonical transcripts**	% transcripts with at least one nc junction
+- **Intra-priming:**	Evidence of intra-priming (see SQANTI ref)
+- **RT-switching:**	Evidence of RT-switching (see SQANTI ref)
+
+This document shows the performance of your pipeline for criteria 4.  Critical data for evaluation according to 2. and 4. will be made available after the closure of the challenge, and therefore pre-evaluation reports cannot be provided. Note you’re your criterion 1 metrics reported here have been calculated using GENCODE human v38 and mouse M27 releases while the final evaluation will use human v39 and mouse M28 to be released after completing of the challenge.
+
+## Evaluation of detected transcripts for Challenge 1  {.tabset .tabset-pills}
+
+
+### Global overview
+
+```{r,echo=FALSE}
+kable(all.results["global"], align = "r")
+
+kable(all.results["global_SJ"], align = "r")
+```
+
+### Evaluation of FSM
+
+```{r , echo=FALSE}
+
+kable(all.results["FSM"], align = "r")
+
+if (nrow(sqanti_data_FSM)>1 & sum(!is.na(sqanti_data_FSM$mean_all_coverage)) ){
+  ggplot(sqanti_data_FSM, aes(x=log(mean_all_coverage+1), fill=structural_category ) )+
+  geom_density(na.rm = T) +
+  mytheme +
+  scale_fill_manual(values=myPalette[1])+
+  labs(title="Mean SJ coverage",
+       subtitle = "FSM isoforms") +
+  xlab("log(Mean coverage of SJ +1)")
+
+}
+
+```
+
+### Evaluation of ISM
+
+```{r , echo=FALSE}
+
+kable(all.results["ISM"], align = "r")
+
+if (nrow(sqanti_data_ISM)>1 & sum(!is.na(sqanti_data_ISM$mean_all_coverage)) ){
+  ggplot(sqanti_data_ISM, aes(x=log(mean_all_coverage+1), fill=structural_category ) )+
+  geom_density(na.rm = T) +
+  mytheme +
+  scale_fill_manual(values=myPalette[2])+
+  labs(title="Mean SJ coverage",
+       subtitle = "ISM isoforms") +
+  xlab("log(Mean coverage of SJ +1)")
+}
+
+if (nrow(sqanti_data_ISM)>1){
+  ggplot(sqanti_data_ISM, aes( x=subcategory, y=missing_exons_perc, fill=subcategory)) +
+  geom_boxplot() + 
+  mytheme + 
+  scale_fill_discrete()+
+  labs(title = "Percentage of missing exons regarding \n\nto the associated reference transcript",
+       subtitle = "The higher the % is, the more exons are missing") +
+  ylab("Percentage of missing exons") +
+  xlab("Subcategories") +
+  coord_flip()
+}
+
+
+```
+
+### Evaluation NIC
+
+```{r , echo=FALSE}
+
+kable(all.results["NIC"], align = "r")
+
+if(nrow(sqanti_data_NIC) > 1 & sum(!is.na(sqanti_data_NIC$mean_known_coverage)) > 1 & sum(!is.na(sqanti_data_NIC$mean_novel_coverage)) > 1){
+  if (!all(sqanti_data_NIC$novel_SJ==0)){
+  ggplot(sqanti_data_NIC) +
+  geom_density(color="black", size=0.5, aes( x = log(mean_novel_coverage +1) , fill="Novel SJ"), alpha=0.5, na.rm = T) +
+  geom_density(color="black",  size=0.5, aes( x = log(mean_known_coverage +1) , fill="Known SJ"), alpha=0.5, na.rm = T) +
+  mytheme  +
+  labs(title="Mean SJ coverage per isoform comparison: known SJ vs novel SJ",
+       subtitle = "Using all NIC isoforms") +
+  ylab("Density") + xlab("log(Mean Coverage of SJ +1)")  
+  }else{
+  ggplot(sqanti_data_NIC) +
+  geom_density(color="black",  size=0.5, aes( x = log(mean_known_coverage +1) , fill="Known SJ"), alpha=0.5, na.rm = T) +
+  mytheme  +
+  labs(title="Mean SJ coverage per isoform comparison: known SJ vs novel SJ",
+       subtitle = "Using all NIC isoforms") +
+  ylab("Density") + xlab("log(Mean Coverage of SJ +1)")  
+  }
+}
+
+nic_only=subset(sqanti_data_NIC, FSM_class=="A")
+
+if(nrow(nic_only)>1 & sum(!is.na(nic_only$mean_known_coverage)) > 1 & sum(!is.na(nic_only$mean_novel_coverage)) > 1) {
+  if (!all(nic_only$novel_SJ==0)){
+  ggplot(nic_only) +
+  geom_density(color="black", size=0.5, aes( x = log(mean_novel_coverage +1) , fill="Novel SJ"), alpha=0.5, na.rm = T) +
+  geom_density(color="black",  size=0.5, aes( x = log(mean_known_coverage +1) , fill="Known SJ"), alpha=0.5, na.rm = T) +
+  mytheme  +
+  labs(title="Mean SJ coverage per isoform comparison: known SJ vs novel SJ",
+       subtitle = "Using just NIC isoforms which are the only transcript expressed for that gene") +
+  ylab("Density") + xlab("log(Mean Coverage of SJ +1)")
+}else{
+  ggplot(nic_only) +
+  geom_density(color="black",  size=0.5, aes( x = log(mean_known_coverage +1) , fill="Known SJ"), alpha=0.5, na.rm = T) +
+  mytheme  +
+  labs(title="Mean SJ coverage per isoform comparison: known SJ vs novel SJ",
+       subtitle = "Using just NIC isoforms which are the only transcript expressed for that gene") +
+      ylab("Density") + xlab("log(Mean Coverage of SJ +1)")
+  }
+}
+
+```
+
+### Evaluation NNC
+
+```{r, echo=FALSE}
+
+kable(all.results["NNC"], align = "r")
+
+if(nrow(sqanti_data_NNC) > 1 & sum(!is.na(sqanti_data_NNC$mean_known_coverage)) > 1 & sum(!is.na(sqanti_data_NNC$mean_novel_coverage)) > 1){
+  ggplot(sqanti_data_NNC) +
+  geom_density(color="black", size=0.5, aes( x = log(mean_novel_coverage +1) , fill="Novel SJ"), alpha=0.5, na.rm = T) +
+  geom_density(color="black",  size=0.5, aes( x = log(mean_known_coverage +1) , fill="Known SJ"), alpha=0.5, na.rm = T) +
+  mytheme  +
+  labs(title="Mean SJ coverage per isoform comparison: all SJ vs novel SJ",
+       subtitle = "Using all NNC isoforms") +
+  ylab("Density") + xlab("log(Mean Coverage of SJ +1)") 
+}
+
+nnc_only=subset(sqanti_data_NNC, (FSM_class=="A"))
+
+if(nrow(nnc_only) > 1 & sum(!is.na(nnc_only$mean_known_coverage)) > 1 & sum(!is.na(nnc_only$mean_novel_coverage)) > 1){
+  ggplot(nnc_only) +
+  geom_density(color="black", size=0.5, aes( x = log(mean_novel_coverage +1) , fill="Novel SJ"), alpha=0.5, na.rm = T) +
+  geom_density(color="black",  size=0.5, aes( x = log(mean_known_coverage +1) , fill="Known SJ"), alpha=0.5, na.rm = T) +
+  mytheme  +
+  labs(title="Mean SJ coverage per isoform comparison: all SJ vs novel SJ",
+       subtitle = "Using just NNC isoforms which are the only transcript expressed for that gene") +
+  ylab("Density") + xlab("log(Mean Coverage of SJ +1)")
+}
+
+
+```
+
+
+## Evaluation of Simulation {.tabset .tabset-pills}
+
+Simulated transcripts were grouped according to different thresholds and attributes, so metrics were calculated regarding to these ground truth setttings. These sets of ground truth transcripts are:
+- All the simulated transcripts.
+- All the transcripts simulated with at least 1 TPM expression.
+- All the transcripts simulated with at least 5 TPM expression.
+- Only those transcripts that were added from a different organism (evaluation of novelty).
+
+The following metrics and definitions apply to simulated transcripts. 
+
+- **Number of isoforms simulated:**	Total number of simulated isoforms taken into account as ground truth.
+- **True Positive detections (TP):**	Isoforms identified as Reference Match of a simulated transcript.
+- **Partial True Positive detections (PTP):**	Isoforms identified as ISM or FSM_non_RM
+- **False Negative (FN):**	Transcripts that were expected to be detected but they were not.
+- **False Positive (FP):**	Transcripts that were detected but they weren't simulated.
+- **Sensitivity:**	TP/Number of isoforms simulated
+- **Precision:**	RM/Detected isoforms
+- **Non_redundant Precision:**	TP/ detected isoforms
+- **Positive Detection Rate:**	unique(TP+PTP)/Number of isoforms simulated
+- **False Discovery Rate:**	(FP + PTP)/Detected isoforms
+- **False Detection Rate:**	(FP)/Detected isoforms
+- **Redundancy:**	(Detected isoforms associated to simulated transcripts)/(Simulated transcripts detected)
+
+**False Positive** metrics are mainly relevant when using as ground truth the entire set of simulated transcripts.
+
+**ATENTION**
+If in this chunk of the evaluation all the results are 0, please, check if the reference genome and/or transcriptome.
+
+### Evaluation of all simulation
+
+```{r , echo=FALSE}
+kable(all.results["tot.0.sim"], align = "r")
+
+```
+
+### Evaluation of all simulation with TPM >= 1
+
+```{r , echo=FALSE}
+kable(all.results["tot.1.sim"], align = "r")
+
+```
+
+### Evaluation of all simulation with TPM >= 5
+
+```{r , echo=FALSE}
+kable(all.results["tot.5.sim"], align = "r")
+
+```
+
+### Evaluation of novelty
+
+```{r , echo=FALSE}
+kable(all.results["novel.sim"], align = "r")
+
+```
+
+

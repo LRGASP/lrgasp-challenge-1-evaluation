@@ -16,7 +16,9 @@ name <- args[3]
 utilities.path <- args[4]
 platform <- args[5]
 rdata <- args[6]
-
+if (length(args)>6){
+  sim_prefix <- args[7]
+}
 
 report.prefix <- strsplit(class.file, "_classification.txt")[[1]][1];
 report.file <- paste(report.prefix, "Evaluation_report.html", sep="_");
@@ -33,20 +35,29 @@ library(scales)
 library(knitr)
 library(rmarkdown)
 library(data.table)
-
+library(tidyverse)
 #********************* Run Calculation scripts
 
 setwd(utilities.path)
-source("LRGASP_calculations.R")
 
-LRGASP_calculations(NAME = name , out.dir = rdata,
+if (exists("sim_prefix")){
+  source("LRGASP_calculations.simulation.R")
+  
+  LRGASP_calculations(NAME = name , out.dir = rdata,
+                      class.file=class.file, junc.file=junc.file,
+                      functions.dir = utilities.path, sim_prefix = sim_prefix)
+  
+  RMD = paste(utilities.path, "Evaluation_metrics.simulation.Rmd", sep = "/")
+}else{
+  source("LRGASP_calculations.R")
+  
+  LRGASP_calculations(NAME = name , out.dir = rdata,
                       class.file=class.file, junc.file=junc.file,
                       functions.dir = utilities.path)
+  
+  RMD = paste(utilities.path, "Evaluation_metrics.Rmd", sep = "/")
+}
 
-
-
-
-RMD = paste(utilities.path, "Evaluation_metrics.Rmd", sep = "/")
 
 rmarkdown::render(RMD, params = list(
   output.directory = rdata,

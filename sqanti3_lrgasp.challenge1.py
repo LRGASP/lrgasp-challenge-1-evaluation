@@ -1985,6 +1985,8 @@ def run(args):
              os.makedirs(rdata_out)
              rerun=True
         cmd = RSCRIPTPATH + " {d}/{f} {c} {j} {n} {d} {p} {o} ".format(d=utilitiesPath, f=RSCRIPT_REPORT, c=outputClassPath, j=outputJuncPath, n=experiment_id, p=platform, o=rdata_out )
+        if args.simulation is not None:
+            cmd = cmd + " {s}".format(s=args.simulation)
         if subprocess.check_call(cmd, shell=True)!=0:
             print("ERROR running command: {0}".format(cmd), file=sys.stderr)
             sys.exit(-1)
@@ -2266,6 +2268,7 @@ def main():
     parser.add_argument('--gff3' , help='\t\tPrecomputed tappAS species specific GFF3 file. It will serve as reference to transfer functional attributes',required=False)
     parser.add_argument('--experiment_json' , help='\t\tExperiment JSON file that is requiered for uploading the submission. More info here: https://lrgasp.github.io/lrgasp-submissions/docs/metadata.html . In case it is not provided, a fake one will be used, but that will not affect to the results of the evaluation.', required=False)
     parser.add_argument('--entry_json' , help='\t\tEntry JSON file that is requiered for uploading the submission. More info here: https://lrgasp.github.io/lrgasp-submissions/docs/metadata.html . In case it is not provided, a fake one will be used, but that will not affect to the results of the evaluation.', required=False)
+    parser.add_argument('--simulation' , help='\t\t File Prefix for simulation ground truth. There should be a *.counts.txt and a *.novel_isoforms.txt files',required=False)
 
 
     args = parser.parse_args()
