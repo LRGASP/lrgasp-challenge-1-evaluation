@@ -1351,7 +1351,7 @@ p6.1 <- ggplot(dist.list[[5]], aes(x=sample, y=(dist*-1))) +
   geom_boxplot(width=0.05, outlier.shape = NA) +
   mytheme +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-  ylim(c(-200,1000))+
+  ylim(c(-1000,200))+
   labs(title = "Distance to closest CAGE peak (FSM only)", y="Distance (bp)", x="") +
   scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
@@ -1359,7 +1359,7 @@ p6.2 <- ggplot(dist.list[[6]], aes(x=sample, y=(dist*-1))) +
   geom_violin(alpha=0.7, aes(fill=sample)) +
   geom_boxplot(width=0.05, outlier.shape = NA) +
   mytheme +
-  ylim(c(-200,1000))+
+  ylim(c(1000,-200))+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   labs(title = "Distance to closest CAGE peak (ISM only)", y="Distance (bp)", x="") +
   scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
@@ -1389,7 +1389,6 @@ p7.1.3 <- ggplot(NNC.RT, aes(x=sample, y=NNC, fill=sample)) + geom_bar(stat="ide
   scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
 # PLOT 8: Length Distribution
-length_distribution$experiment_id <- factor(length_distribution$experiment_id, levels=sorted_pipelines)
 if (max(length_distribution$length)>30000){
   p8 <- ggplot(length_distribution, aes(x=experiment_id, y=length))+
     geom_violin(alpha=0.7 , aes(fill=experiment_id)) +
