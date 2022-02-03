@@ -1,6 +1,6 @@
 ### New version by Fran. Jan 2021
 
-LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions.dir) {
+LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions.dir, onlyReport=TRUE) {
   # Get functions and spike-ins IDs
   setwd(functions.dir)
   source("LRGASP_functions.R")
@@ -11,6 +11,9 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   cat("Evaluation script has being run.\nData used for ", NAME, " pipeline are \n", class.file , "\n", junc.file , "\n")
   sqanti_data=read.table(class.file , sep = "\t", as.is = T, header = T)
   sqanti_data.junc=read.table(junc.file, sep = "\t", as.is = T, header = T)
+  
+  if (onlyReport==FALSE){
+  
   if(all(is.na(sqanti_data$iso_exp))){
     sqanti_data$iso_exp <- 0
   }
@@ -32,7 +35,8 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   ### rewrite initial table with LRGASP_id
   
   write.table(sqanti_data, class.file, quote=F, sep = "\t", row.names = FALSE)
-
+  
+  }
   ### separate spike-ins and isoforms
   sirv_data=sqanti_data[grep("SIRV",sqanti_data$chrom),]
   ercc_data=sqanti_data[grep("ERCC",sqanti_data$chrom),]
@@ -42,6 +46,9 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   ### remove SIRV and ERCC transcripts from sqanti data
   sqanti_data=sqanti_data[grep("SIRV|ERCC",sqanti_data$chrom, invert=T),]
   sqanti_data.junc=sqanti_data.junc[grep("SIRV|ERCC",sqanti_data.junc$chrom, invert=T),]
+  
+  ### add is_intrapirming column
+  sqanti_data$intrapriming <- apply(sqanti_data,1,is_intrapriming)
   
   ### Evaluation of FSM
   #####################
@@ -85,6 +92,9 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   FSM_TPR_allTP_abs=length(which(sqanti_data_FSM$TP_all==TRUE))
   FSM_TPR_allTP=FSM_TPR_allTP_abs*100/dim(sqanti_data_FSM)[1]
   
+  # intrapriming
+  FSM_intraPriming_abs <- length(which(sqanti_data_FSM$intrapriming==TRUE))
+  FSM_intraPriming <- FSM_intraPriming_abs*100/dim(sqanti_data_FSM)[1]
   ##### NEEDED?
   # Normalized values
   normalized_FSM_TP=sqanti_data_FSM[,c("associated_transcript","TP_ref5","TP_ref3", "TP", "TP_5prime","TP_3prime","polyA_motif","pos_cage_peak")]
@@ -105,8 +115,8 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   
   # Write out results
   a.FSM_results=data.frame(row.names = c("Number of isoforms","Reference Match", "5' reference supported (transcript)", "3' reference supported (transcript)",
-                                         "5' reference supported (gene)", "3' reference supported (gene)", "5' CAGE supported", "3' polyA motif supported",
-                                         "Supported Reference Transcript Model (SRTM)", "Reference redundancy Level"))
+                                         "5' reference supported (gene)", "3' reference supported (gene)", "5' CAGE supported", "3' polyA supported",
+                                         "Supported Reference Transcript Model (SRTM)", "Intra-priming", "Reference redundancy Level"))
   a.FSM_results[,"Absolute value"]="-"
   a.FSM_results[,"Relative value (%)"]="-"
   
@@ -123,10 +133,12 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   a.FSM_results["3' reference supported (gene)","Relative value (%)"]= round(FSM_TPR_ref3_gene, digits = 2)
   a.FSM_results["5' CAGE supported","Absolute value"]= FSM_TPR_5primeTP_abs
   a.FSM_results["5' CAGE supported","Relative value (%)"]= round(FSM_TPR_5primeTP, digits = 2)
-  a.FSM_results["3' polyA motif supported","Absolute value"]= FSM_TPR_3primeTP_abs
-  a.FSM_results["3' polyA motif supported","Relative value (%)"]= round(FSM_TPR_3primeTP, digits = 2)
+  a.FSM_results["3' polyA supported","Absolute value"]= FSM_TPR_3primeTP_abs
+  a.FSM_results["3' polyA supported","Relative value (%)"]= round(FSM_TPR_3primeTP, digits = 2)
   a.FSM_results["Supported Reference Transcript Model (SRTM)","Absolute value"]= FSM_TPR_allTP_abs
   a.FSM_results["Supported Reference Transcript Model (SRTM)","Relative value (%)"]= round(FSM_TPR_allTP, digits = 2)
+  a.FSM_results["Intra-priming","Absolute value"]= FSM_intraPriming_abs
+  a.FSM_results["Intra-priming","Relative value (%)"]= round(FSM_intraPriming, digits = 2)
   a.FSM_results["Reference redundancy Level","Absolute value"]= round(FSM_reference_redundancy, digits = 2)
   
   ### Evaluation of ISM
@@ -174,6 +186,10 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   ISM_TPR_allTP_abs=length(which(sqanti_data_ISM$TP_all==TRUE))
   ISM_TPR_allTP=ISM_TPR_allTP_abs*100/dim(sqanti_data_ISM)[1]
   
+  # intrapriming
+  ISM_intraPriming_abs <- length(which(sqanti_data_ISM$intrapriming==TRUE))
+  ISM_intraPriming <- ISM_intraPriming_abs*100/dim(sqanti_data_ISM)[1]
+  
   # Normalized values ### NEEDED??
   normalized_ISM_TP=sqanti_data_ISM[ , c("associated_transcript","TP_ref5","TP_ref3", "TP","TP_5prime","TP_3prime","polyA_motif","pos_cage_peak")]
   normalized_ISM_TP=unique(normalized_ISM_TP)
@@ -193,8 +209,8 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   # Write out results
   b.ISM_results=data.frame(row.names = c("Number of isoforms", "5' reference supported (transcript)", "3' reference supported (transcript)",
                                          "5' and 3' reference supported (gene)", "5' reference supported (gene)", "3' reference supported (gene)", 
-                                         "5' CAGE supported", "3' polyA motif supported",
-                                         "Supported Reference Transcript Model (SRTM)", "Reference redundancy Level"))
+                                         "5' CAGE supported", "3' polyA supported",
+                                         "Supported Reference Transcript Model (SRTM)", "Intra-priming", "Reference redundancy Level"))
   b.ISM_results[,"Absolute value"]="-"
   b.ISM_results[,"Relative value (%)"]="-"
   b.ISM_results["Number of isoforms","Absolute value"]=as.integer(dim(sqanti_data_ISM)[1])
@@ -210,10 +226,12 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   b.ISM_results["3' reference supported (gene)","Relative value (%)"]=round(ISM_TPR_ref3_gene, digits = 2)
   b.ISM_results["5' CAGE supported","Absolute value"]=ISM_TPR_5primeTP_abs
   b.ISM_results["5' CAGE supported","Relative value (%)"]=round(ISM_TPR_5primeTP, digits = 2)
-  b.ISM_results["3' polyA motif supported","Absolute value"]=ISM_TPR_3primeTP_abs
-  b.ISM_results["3' polyA motif supported","Relative value (%)"]=round(ISM_TPR_3primeTP, digits = 2)
+  b.ISM_results["3' polyA supported","Absolute value"]=ISM_TPR_3primeTP_abs
+  b.ISM_results["3' polyA supported","Relative value (%)"]=round(ISM_TPR_3primeTP, digits = 2)
   b.ISM_results["Supported Reference Transcript Model (SRTM)","Absolute value"]=ISM_TPR_allTP_abs
   b.ISM_results["Supported Reference Transcript Model (SRTM)","Relative value (%)"]=round(ISM_TPR_allTP, digits = 2)
+  b.ISM_results["Intra-priming","Absolute value"]= ISM_intraPriming_abs
+  b.ISM_results["Intra-priming","Relative value (%)"]= round(ISM_intraPriming, digits = 2)
   b.ISM_results["Reference redundancy Level","Absolute value"]=round(ISM_reference_redundancy, digits = 2)
   
   ### Evaluation of NIC
@@ -255,11 +273,15 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   NIC_IR_incidence_abs=length(which(sqanti_data_NIC$subcategory=="IR"))
   NIC_IR_incidence=NIC_IR_incidence_abs*100/dim(sqanti_data_NIC)[1] 
   
+  # intrapriming
+  NIC_intraPriming_abs <- length(which(sqanti_data_NIC$intrapriming==TRUE))
+  NIC_intraPriming <- NIC_intraPriming_abs*100/dim(sqanti_data_NIC)[1]
+  
   ## Write results
   c.NIC_results=data.frame(row.names = c("Number of isoforms", "5' and 3' reference supported (gene)", 
                                          "5' reference supported (gene)", "3' reference supported (gene)", 
-                                         "5' CAGE supported", "3' polyA motif supported",
-                                         "Supported Novel Transcript Model (SNTM)", "Intron retention incidence"))
+                                         "5' CAGE supported", "3' polyA supported",
+                                         "Supported Novel Transcript Model (SNTM)", "Intra-priming", "Intron retention incidence"))
   c.NIC_results[,"Absolute value"]="-"
   c.NIC_results[,"Relative value (%)"]="-"
   c.NIC_results["Number of isoforms","Absolute value"]=as.integer(dim(sqanti_data_NIC)[1])
@@ -271,17 +293,19 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   c.NIC_results["3' reference supported (gene)","Relative value (%)"]=round(NIC_TPR_TP_ref3_gene, digits = 2)
   c.NIC_results["5' CAGE supported","Absolute value"]=NIC_TPR_5primeTP_abs
   c.NIC_results["5' CAGE supported","Relative value (%)"]=round(NIC_TPR_5primeTP, digits = 2)
-  c.NIC_results["3' polyA motif supported","Absolute value"]=NIC_TPR_3primeTP_abs
-  c.NIC_results["3' polyA motif supported","Relative value (%)"]=round(NIC_TPR_3primeTP, digits = 2)
+  c.NIC_results["3' polyA supported","Absolute value"]=NIC_TPR_3primeTP_abs
+  c.NIC_results["3' polyA supported","Relative value (%)"]=round(NIC_TPR_3primeTP, digits = 2)
   c.NIC_results["Supported Novel Transcript Model (SNTM)", "Absolute value" ]=NIC_TPR_allTP_abs
   c.NIC_results["Supported Novel Transcript Model (SNTM)", "Relative value (%)" ]=round(NIC_TPR_allTP, digits = 2)
+  c.NIC_results["Intra-priming","Absolute value"]= NIC_intraPriming_abs
+  c.NIC_results["Intra-priming","Relative value (%)"]= round(NIC_intraPriming, digits = 2)
   c.NIC_results["Intron retention incidence","Absolute value"]=NIC_IR_incidence_abs
   c.NIC_results["Intron retention incidence","Relative value (%)"]=round(NIC_IR_incidence, digits = 2)
   } else {
   c.NIC_results=data.frame(row.names = c("Number of isoforms", "5' and 3' reference supported (gene)",
                                          "5' reference supported (gene)", "3' reference supported (gene)",
-                                         "5' CAGE supported", "3' polyA motif supported",
-                                         "Supported Novel Transcript Model (SNTM)", "Intron retention incidence"))
+                                         "5' CAGE supported", "3' polyA supported",
+                                         "Supported Novel Transcript Model (SNTM)", "Intra-priming",  "Intron retention incidence"))
   c.NIC_results[,"Absolute value"]="0"
   c.NIC_results[,"Relative value (%)"]="0"
 
@@ -333,13 +357,16 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   NNC_RT_switching_incidence_abs=length(which(sqanti_data_NNC$RTS_stage==TRUE))
   NNC_RT_switching_incidence=NNC_RT_switching_incidence_abs*100/dim(sqanti_data_NNC)[1]
   
+  # intrapriming
+  NNC_intraPriming_abs <- length(which(sqanti_data_NNC$intrapriming==TRUE))
+  NNC_intraPriming <- NNC_intraPriming_abs*100/dim(sqanti_data_NNC)[1]
   
   ## Write results
   d.NNC_results=data.frame(row.names = c("Number of isoforms", "5' and 3' reference supported (gene)", 
                                          "5' reference supported (gene)", "3' reference supported (gene)", 
-                                         "5' CAGE supported", "3' polyA motif supported",
+                                         "5' CAGE supported", "3' polyA supported",
                                          "Supported Novel Transcript Model (SNTM)", "Non-canonical SJ incidence",
-                                         "Full Illumina SJ support", "RT-switching incidence"))
+                                         "Full Illumina SJ support", "Intra-priming", "RT-switching incidence"))
   d.NNC_results[,"Absolute value"]="-"
   d.NNC_results[,"Relative value (%)"]="-"
   d.NNC_results["Number of isoforms","Absolute value"]=as.integer(dim(sqanti_data_NNC)[1])
@@ -351,22 +378,24 @@ LRGASP_calculations <- function (NAME, class.file, junc.file, out.dir, functions
   d.NNC_results["3' reference supported (gene)","Relative value (%)"]=round(NNC_TPR_TP_ref3_gene, digits = 2)
   d.NNC_results["5' CAGE supported","Absolute value"]=NNC_TPR_5primeTP_abs
   d.NNC_results["5' CAGE supported","Relative value (%)"]=round(NNC_TPR_5primeTP, digits = 2)
-  d.NNC_results["3' polyA motif supported","Absolute value"]=NNC_TPR_3primeTP_abs
-  d.NNC_results["3' polyA motif supported","Relative value (%)"]=round(NNC_TPR_3primeTP, digits = 2)
+  d.NNC_results["3' polyA supported","Absolute value"]=NNC_TPR_3primeTP_abs
+  d.NNC_results["3' polyA supported","Relative value (%)"]=round(NNC_TPR_3primeTP, digits = 2)
   d.NNC_results["Supported Novel Transcript Model (SNTM)", "Absolute value"]=NNC_TPR_allTP_abs
   d.NNC_results["Supported Novel Transcript Model (SNTM)", "Relative value (%)"]=round(NNC_TPR_allTP, digits = 2)
   d.NNC_results["Full Illumina SJ support","Absolute value"]=NNC_full_Illumina_SJ_support_abs
   d.NNC_results["Full Illumina SJ support","Relative value (%)"]=round(NNC_full_Illumina_SJ_support, digits = 2)
   d.NNC_results["Non-canonical SJ incidence","Absolute value"]=NNC_non_canonical_incidence_abs
   d.NNC_results["Non-canonical SJ incidence","Relative value (%)"]=round(NNC_non_canonical_incidence, digits = 2)
+  d.NNC_results["Intra-priming","Absolute value"]= NNC_intraPriming_abs
+  d.NNC_results["Intra-priming","Relative value (%)"]= round(NNC_intraPriming, digits = 2)
   d.NNC_results["RT-switching incidence","Absolute value"]=NNC_RT_switching_incidence_abs
   d.NNC_results["RT-switching incidence","Relative value (%)"]=round(NNC_RT_switching_incidence, digits = 2)
   } else {
   d.NNC_results=data.frame(row.names = c("Number of isoforms", "5' and 3' reference supported (gene)",
                                          "5' reference supported (gene)", "3' reference supported (gene)",
-                                         "5' CAGE supported", "3' polyA motif supported",
+                                         "5' CAGE supported", "3' polyA supported",
                                          "Supported Novel Transcript Model (SNTM)", "Non-canonical SJ incidence",
-                                         "Full Illumina SJ support", "RT-switching incidence"))
+                                         "Full Illumina SJ support", "Intra-priming", "RT-switching incidence"))
 
   d.NNC_results[,"Absolute value"]="0"
   d.NNC_results[,"Relative value (%)"]="0"

@@ -63,7 +63,7 @@ SJ_wo_cov=function(X, sqanti_data_junc ){
 }
 
 SJ_w_cov_perc=function(X){
-  if (as.integer(X["exons"])!=0){
+  if (as.integer(X["exons"])!=1){
   (1-(as.integer(X["SJ_wo_cov"])/(as.integer(X["exons"])-1)))*100
   }else{0}
 }
@@ -137,6 +137,16 @@ distancias <- function (CLASS, category, dist) {
 
 missing_exons_function=function(X){
   as.integer(X["ref_exons"]) - as.integer(X["exons"])
+}
+
+### intrapriming if > 60% in next 20bp after TTS
+
+is_intrapriming=function(X){
+  if (as.integer(X["perc_A_downstream_TTS"])>=60){
+    return(TRUE)
+  }else{
+    return(FALSE)
+  }
 }
 
 #### LRGASP_id
