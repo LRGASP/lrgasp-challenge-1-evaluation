@@ -32,6 +32,10 @@ threeTP_function=function(X){
   if(isTRUE(as.logical(X["within_polya_site"])) || !is.na(X["polyA_motif"]) ){TRUE}else{FALSE}
 }
 
+quantseqTP_function=function(X){
+  if(isTRUE(as.logical(X["within_polya_site"]))){TRUE}else{FALSE}
+}
+
 allTP_function=function(X){
   (abs(as.integer(X["diff_to_gene_TSS"]))<=50 || isTRUE(as.logical(X["within_cage_peak"]))) && 
   (abs(as.integer(X["diff_to_gene_TTS"]))<=50 || !is.na(X["polyA_motif"]))

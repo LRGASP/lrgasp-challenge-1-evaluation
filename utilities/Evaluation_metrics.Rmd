@@ -42,7 +42,8 @@ setwd(params$output.directory)
 
 results_file <- dir(pattern = "*_results.RData")
 load(results_file)
-names(all.results) <- c("FSM", "ISM", "NIC", "NNC", "SIRV", "global", "global_SJ")
+names(all.results) <- c("FSM", "ISM", "NIC", "NNC", "SIRV", "global", "global_SJ", "spliced_SIRV", "unspliced_SIRV", 
+                          "ISM_5fragment", "ISM_3fragment", "ISM_internal", "ISM_IR", "ISM_mono") 
 
 FSM_class_file=dir(pattern = "*_FSM.RData")
 load(FSM_class_file)
@@ -156,6 +157,56 @@ if (nrow(sqanti_data_ISM)>1){
 
 ```
 
+### Evaluation of ISM (5' fragments)
+
+This data refers only to ISM isoforms with missing exons at the 3' end (subcategory 5' fragment)
+
+```{r , echo=FALSE}
+
+kable(all.results["ISM_5fragment"], align = "r")
+
+```
+
+### Evaluation of ISM (3' fragments)
+
+This data refers only to ISM isoforms with missing exons at the 5' end (subcategory 3' fragment)
+
+```{r , echo=FALSE}
+
+kable(all.results["ISM_3fragment"], align = "r")
+
+```
+
+### Evaluation of ISM (internal fragments)
+
+This data refers only to ISM isoforms with missing exons at the 5' and 3' ends (subcategory internal fragment)
+
+```{r , echo=FALSE}
+
+kable(all.results["ISM_internal"], align = "r")
+
+```
+
+### Evaluation of ISM (intron retention)
+
+This data refers only to ISM isoforms with missing SJ because of Intron Retention (subcategory intron retention)
+
+```{r , echo=FALSE}
+
+kable(all.results["ISM_IR"], align = "r")
+
+```
+
+### Evaluation of ISM (monoexon)
+
+This data refers only to ISM mono-exon isoforms (subcategory mono-exon)
+
+```{r , echo=FALSE}
+
+kable(all.results["ISM_mono"], align = "r")
+
+```
+
 ### Evaluation NIC
 
 ```{r , echo=FALSE}
@@ -237,7 +288,7 @@ if(nrow(nnc_only) > 1 & sum(!is.na(nnc_only$mean_known_coverage)) > 1 & sum(!is.
 ```
 
 
-## Evaluation of Spike-Ins (SIRVs) 
+## Evaluation of Spike-Ins (SIRVs)  {.tabset .tabset-pills}
 
 The following metrics and definitions apply to SIRV transcripts:
 
@@ -258,10 +309,23 @@ The following metrics and definitions apply to SIRV transcripts:
 **ATENTION**
 If in this chunk of the evaluation all the results are 0, please, check if the reference genome and/or transcriptome used for building your transcript-model  contain information about spike-ins.
 
+### All SIRVs
 
 ```{r , echo=FALSE}
 kable(all.results["SIRV"], align = "r")
 
 ```
 
+### Spliced (short) SIRVs
 
+```{r , echo=FALSE}
+kable(all.results["spliced_SIRV"], align = "r")
+
+```
+
+### Unspliced (long) SIRVs
+
+```{r , echo=FALSE}
+kable(all.results["unspliced_SIRV"], align = "r")
+
+```

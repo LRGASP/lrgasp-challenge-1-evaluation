@@ -36,6 +36,7 @@ dependencies:
   - r-reshape
   - r-jaccard
   - r-corrplot
+  - r-splitstackshape
   - bioconductor-rsamtools
   - bioconductor-complexheatmap
   - samtools

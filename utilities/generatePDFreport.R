@@ -1,6 +1,6 @@
 generatePDFreport = function() 
   {
-  pdf(file=pdf.report.file, width = 6.5, height = 6.5)
+  pdf(file=pdf.report.file, width = 16, height = 9)
 
   #cover
   grid.newpage()
@@ -32,16 +32,20 @@ generatePDFreport = function()
   print(p5.1)
   print(p5.2)
   print(p6.1)
-  print(p6.2)
+  #print(p6.2)
+  print(p4.1.1)
+  print(p4.2.1)
+  print(p5.1.1)
+  print(p5.2.1)
+  print(p6.1.1)
+  #print(p6.2.1)
   print(p8)
+  print(p8.1)
   
   print("Plotting Jaccard...")
   # Jaccard Index
   s <- textGrob("Presence/absence analysis \nof UJC across pipelines", gp=gpar(fontface="italic", fontsize=17), vjust = 0)
   grid.arrange(s)
-  corrplot(jac_index_mat, order="hclust", is.corr = F, method = "circle", tl.col = "black",
-           title="Pair-wise Jaccard index between submissions", mar = c(2,1.5,1.5,1.5),
-           col = COL2("RdBu", 100 ))
   print(p12)
   for (i in 1:length(p12.1)) {
     print(p12.1[[i]])
@@ -77,13 +81,21 @@ generatePDFreport = function()
   for (i in 1:length(pt3)) {
     print(pt3[[i]])
   }
+  if (old_results != TRUE){
+  for (i in 1:length(pt3.1)) {
+    print(pt3.1[[i]])
+  }
+  for (i in 1:length(pt3.2)) {
+    print(pt3.2[[i]])
+  }
+  }
   # FSM
   #grid.arrange(t4.1)
   for (i in 1:length(pt4.1)) {
     print(pt4.1[[i]])
   }
   #grid.arrange(t4.2)
-  for (i in 2:(length(pt4.2)-1)) {
+  for (i in 1:(length(pt4.2))) {
     print(pt4.2[[i]])
   }
   # ISM
@@ -92,7 +104,7 @@ generatePDFreport = function()
     print(pt5.1[[i]])
   }
   #grid.arrange(t5.2)
-  for (i in 2:(length(pt5.2)-1)) {
+  for (i in 1:(length(pt5.2))) {
     print(pt5.2[[i]])
   }
   # NIC
@@ -101,7 +113,7 @@ generatePDFreport = function()
     print(pt6.1[[i]])
   }
   #grid.arrange(t6.2)
-  for (i in 2:length(pt6.2)) {
+  for (i in 1:length(pt6.2)) {
     print(pt6.2[[i]])
   }
   # NNC
@@ -110,7 +122,7 @@ generatePDFreport = function()
     print(pt7.1[[i]])
   }
   #grid.arrange(t7.2)
-  for (i in 2:length(pt7.2)) {
+  for (i in 1:length(pt7.2)) {
     print(pt7.2[[i]])
   }
   

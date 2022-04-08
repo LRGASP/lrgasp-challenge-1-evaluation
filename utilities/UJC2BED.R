@@ -16,7 +16,7 @@ code=read_csv(code_file)
 
 # read code list
 # platforms (freestyle discarded)
-pb_pipelines <- code %>% filter(Platform %in% c("PacBio", "PacBio+Illumina")) %>% select(pipelineCode) 
+pb_pipelines <- code %>% filter(Platform %in% c("PB","PacBio", "PacBio+Illumina", "PB+Illumina")) %>% select(pipelineCode) 
 pb_pipelines <- pb_pipelines$pipelineCode %>% as.character()
 ont_pipelines <- code %>% filter(Platform %in% c("ONT", "ONT+Illumina")) %>% select(pipelineCode)
 ont_pipelines <- ont_pipelines$pipelineCode %>% as.character()
@@ -47,9 +47,9 @@ ont_r2c2_pipelines <- ont_r2c2_pipelines$pipelineCode %>% as.character()
 ont_captrap_pipelines <- code %>% filter(Library_Preps %in% c("CapTrap")) %>% filter(Platform %in% c("ONT", "ONT+Illumina")) %>% select(pipelineCode) 
 ont_captrap_pipelines <- ont_captrap_pipelines$pipelineCode %>% as.character()
 
-pb_cdna_pipelines <- code %>% filter(Library_Preps %in% c("cDNA")) %>% filter(Platform %in% c("PacBio", "PacBio+Illumina")) %>% select(pipelineCode) 
+pb_cdna_pipelines <- code %>% filter(Library_Preps %in% c("cDNA")) %>% filter(Platform %in% c("PB","PacBio", "PacBio+Illumina", "PB+Illumina")) %>% select(pipelineCode) 
 pb_cdna_pipelines <- pb_cdna_pipelines$pipelineCode %>% as.character()
-pb_captrap_pipelines <- code %>% filter(Library_Preps %in% c("CapTrap")) %>% filter(Platform %in% c("PacBio", "PacBio+Illumina")) %>% select(pipelineCode) 
+pb_captrap_pipelines <- code %>% filter(Library_Preps %in% c("CapTrap")) %>% filter(Platform %in% c("PB","PacBio", "PacBio+Illumina", "PB+Illumina")) %>% select(pipelineCode) 
 pb_captrap_pipelines <- pb_captrap_pipelines$pipelineCode %>% as.character()
 ## functions
 

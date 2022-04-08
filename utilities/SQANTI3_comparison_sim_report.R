@@ -6,9 +6,8 @@
 #######################################
 
 
-# Author: Jorge Martinez Tomas & Alejandro Paniagua
-# Updated and modified: Francisco J. Pardo-Palacios
-# Last modified: 10/20/2021 by Francisco J. Pardo-Palacios
+# Author: Francisco J. Pardo-Palacios
+# Last modified: 2/16/2021 by Francisco J. Pardo-Palacios
 
 
 #######################################
@@ -30,7 +29,6 @@ suppressMessages(library(ComplexHeatmap))
 suppressMessages(library(RColorConesa))
 suppressMessages(library(jaccard))
 suppressMessages(library(corrplot))
-suppressMessages(library(ggpubr))
 
 #######################################
 #                                     #
@@ -355,9 +353,6 @@ gene_analysis <- function(l_class){
   return(df_gene)
 }
 
-is.nan.data.frame <- function(x){
-  do.call(cbind, lapply(x, is.nan))
-}
 
 # -------------------- Final comparison function
 
@@ -424,23 +419,6 @@ compareTranscriptomes <- function(l_iso){
 }
 
 
-# -------------------- Functions for the report generation
-
-iso2url <- function(id){
-  # Isoform coords to Genome Browser
-  if (id != "NA") {
-    id.split <- str_split(id,"_")
-    chr <- id.split[[1]][2]
-    start <- id.split[[1]][4]
-    end <- id.split[[1]][length(id.split[[1]])]
-    name <- substr(id, 1, 30)
-    url <- paste0(
-      "<a href='https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&lastVirtModeType=default&lastVirtModeExtraState=&virtModeType=default&virtMode=0&nonVirtPosition=&position=",
-      chr, "%3A", start, "%2D", end, "&hgsid=1143169919_jAraPbUWtMCdAHfgTHk4sDHQHW7R",
-      "'>", name, "...</a>")
-    return(url)
-  } else { return(NA) }
-}
 
 
 
@@ -470,14 +448,11 @@ option_list <- list(
               metavar = "CODE"),
   make_option(c("--upset"), action="store_true",type = "character", default = FALSE,
               help="Generate UpSet plots if n<31",
-              metavar = "UPSET"),
-  make_option(c("--old_results"), action="store_true",type = "character", default = FALSE,
-              help="Avoid results of spliced/unspliced SIRVs, ISM subcategpries...",
-              metavar="OLD")
+              metavar = "UPSET")
 )
 
 opt_parser = OptionParser(
-  usage = "usage: %prog [-i DIRIN] [-o DIROUT] [-n OUTNAME] [--lrgasp] [--upset] [--code] [--old_results]",
+  usage = "usage: %prog [-i DIRIN] [-o DIROUT] [-n OUTNAME] [--lrgasp] [--upset] [--code]",
   option_list=option_list
 )
 
@@ -487,7 +462,6 @@ directory <- opt$dir
 output_directory <- opt$outdir
 output_name <- opt$name
 lrgasp <- opt$lrgasp
-old_results <- opt$old_results
 pdf.report.file <- paste0(output_directory,"/",output_name,"_comparison_report.pdf")
 
 if (is.null(directory)) {
@@ -497,15 +471,10 @@ if (is.null(directory)) {
 code=read.csv(opt$code, header=T)
 if (dim(code)[2]==4){
   colnames(code) <- c("pipeline", "Library", "Platform", "Data_Category")
-}else if (dim(code)[2] == 5){
+}else if (dim(code)[2]){
   colnames(code) <- c("pipeline", "Library", "Platform", "Data_Category","Lab")
-}else if (dim(code)[2] > 5){
-  colnames(code) <- c("pipeline", "Library", "Platform", "Data_Category","Lab","Tool","Alias")
 }
-code=code[order(code$Alias),]
-code$Label=apply(cbind(code[,c("Platform","Library", "Data_Category")]), 1, paste, collapse="-")
-code$Lib_DC=apply(cbind(code[,c("Library", "Data_Category")]), 1, paste, collapse="-")
-code$fullLabel <-apply(cbind(code[,c("Alias","Platform","Library", "Data_Category")]), 1, paste, collapse="-")
+code=code[order(code$pipeline),]
 
 
 # -------------------- Load data
@@ -686,11 +655,6 @@ for (i in str_cat) {
 }
 
 
-# ----- Add GenomeBrowser URL to the P/A table
-
-df.PA <- res[[3]]
-df.PA$TAGS <- lapply(df.PA$TAGS, iso2url)
-
 
 # ----- Counts per gene and exon structure
 
@@ -822,20 +786,44 @@ names(l) <- colnames(res[[2]])[3:ncol(res[[2]])]
 # -------------------- LRGASP metrics
 
 if (lrgasp == TRUE){
-  sirv.metrics <- list()
-  sirv_spliced.metrics <- list()
-  sirv_unspliced.metrics <- list()
+  totsim.metrics <- list()
   for (i in 1:length(lrgasp.res)){
-    sirv.metrics[[i]] <- lrgasp.res[[names(lrgasp.res)[i]]]["SIRV"]
-    sirv_spliced.metrics[[i]] <-  lrgasp.res[[names(lrgasp.res)[i]]]["spliced_SIRV"]
-    sirv_unspliced.metrics[[i]] <-  lrgasp.res[[names(lrgasp.res)[i]]]["unspliced_SIRV"]
+    totsim.metrics[[i]] <- lrgasp.res[[names(lrgasp.res)[i]]]["tot.sim"]
   }
-  sirv.metrics <- bind_cols(sirv.metrics)
-  sirv_spliced.metrics <- bind_cols(sirv_spliced.metrics)
-  sirv_unspliced.metrics <- bind_cols(sirv_unspliced.metrics)
-  colnames(sirv.metrics) <- names(lrgasp.res)
-  colnames(sirv_spliced.metrics) <- names(lrgasp.res)
-  colnames(sirv_unspliced.metrics) <- names(lrgasp.res)
+  totsim.metrics <- bind_cols(totsim.metrics)
+  colnames(totsim.metrics) <- names(lrgasp.res)
+  # tot sim 0
+  totsim0.metrics <- list()
+  for (i in 1:length(lrgasp.res)){
+    totsim0.metrics[[i]] <- lrgasp.res[[names(lrgasp.res)[i]]]["tot.0.sim"]
+  }
+  totsim0.metrics <- bind_cols(totsim0.metrics)
+  colnames(totsim0.metrics) <- names(lrgasp.res)
+  
+  # tot sim 1
+  totsim1.metrics <- list()
+  for (i in 1:length(lrgasp.res)){
+    totsim1.metrics[[i]] <- lrgasp.res[[names(lrgasp.res)[i]]]["tot.1.sim"]
+  }
+  totsim1.metrics <- bind_cols(totsim1.metrics)
+  colnames(totsim1.metrics) <- names(lrgasp.res)
+  
+  # tot sim 5
+  totsim5.metrics <- list()
+  for (i in 1:length(lrgasp.res)){
+    totsim5.metrics[[i]] <- lrgasp.res[[names(lrgasp.res)[i]]]["tot.5.sim"]
+  }
+  totsim5.metrics <- bind_cols(totsim5.metrics)
+  colnames(totsim5.metrics) <- names(lrgasp.res)
+  
+  # novel sim
+  novelsim.metrics <- list()
+  for (i in 1:length(lrgasp.res)){
+    novelsim.metrics[[i]] <- lrgasp.res[[names(lrgasp.res)[i]]]["novel.sim"]
+  }
+  novelsim.metrics <- bind_cols(novelsim.metrics)
+  colnames(novelsim.metrics) <- names(lrgasp.res)
+  
   # FSM
   fsm.metrics <- list()
   fsm.metrics_perc <- list()
@@ -898,9 +886,8 @@ for (i in 1:limit){
   data.class <- data.class[grep("SIRV|ERCC",data.class$chrom, invert=T),]
   length_distribution[[i]] <- data.class %>%  select(LRGASP_id,experiment_id, length)
 }
-names(length_distribution) <- names(f_in)[1:limit]
-length_distribution <- bind_rows(length_distribution, .id="pipeline")
-length_distribution <- merge(length_distribution, code, by="pipeline")
+  
+length_distribution <- bind_rows(length_distribution)
 
 
 
@@ -960,14 +947,14 @@ cat.palette1 = c("total"="black", "FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C6
                 "Intergenic" = "darksalmon", "GenicIntron"="#41B6C4", "uniq_id"="black")
 
 
-mytheme <- theme_pubclean(base_family = "Helvetica") +
+mytheme <- theme_classic(base_family = "Helvetica") +
   theme(axis.line.x = element_line(color="black", size = 0.4),
         axis.line.y = element_line(color="black", size = 0.4)) +
   theme(axis.title.x = element_text(size=13),
-        axis.text.x  = element_text(size=10),
+        axis.text.x  = element_text(size=6),
         axis.title.y = element_text(size=13),
-        axis.text.y  = element_text(vjust=0.5, size=10) ) +
-  theme(legend.text = element_text(size = 10), legend.title = element_text(size=10), legend.key.size = unit(0.5, "cm")) +
+        axis.text.y  = element_text(vjust=0.5, size=6) ) +
+  theme(legend.text = element_text(size = 8), legend.title = element_text(size=10), legend.key.size = unit(0.5, "cm")) +
   theme(plot.title = element_text(lineheight=.4, size=15.5)) +
   theme(plot.margin = unit(c(1,0.5,0.5,0.5), "cm")) +
   theme(legend.position = "bottom")
@@ -984,17 +971,16 @@ sorted_pipelines = stringr::str_sort(code$pipeline)
 print("Writting Summary table for structural categories...")
 write.table(df_summary.1, paste0(output_directory, "/", output_name, ".summary_table_SC.csv" ), sep=",", quote = FALSE, row.names = FALSE, col.names = TRUE)
 
-df_summary.1 <- merge(df_summary.1, code, by.x="ID", by.y="pipeline")
-melted_summary.1 <- df_summary.1 %>% pivot_longer(c("FSM","ISM","NIC","NNC",
-                                                      "Antisense","Fusion","GenicGenomic","GenicIntron","Intergenic"))
+melted_summary.1 <- melt(df_summary.1, id.vars = "ID")
+melted_summary.1$ID <- factor(melted_summary.1$ID, levels=sorted_pipelines)
+pt1.1 <- ggplot2::ggplot(melted_summary.1, aes(x=ID, y=value, group=variable)) + 
+  geom_line(linetype = "dashed", aes(color=variable)) +
+  geom_point(aes(color=variable)) +
+  mytheme + scale_color_manual(values=cat.palette1, name="Structural Category")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  labs(title = "Isoforms detected by pipeline",
+       x="", y="Counts")
 
-pt1.1 <- ggplot2::ggplot(melted_summary.1, aes(x=fullLabel, y=value, fill=name)) + 
-  geom_bar(position = "stack", stat="identity") +
-  scale_fill_manual(values =  cat.palette, name="Structural Category") +
-  mytheme +
-  theme( axis.text.x  = element_text(angle = 90)) +
-  ylab("Isoforms detected") +
-  xlab("Pipelines") 
 
 
 #title1.2 <- grid::textGrob("Table 1.2. Summary from SQANTI3 output comparison\n Only unique UJC", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
@@ -1004,17 +990,16 @@ pt1.1 <- ggplot2::ggplot(melted_summary.1, aes(x=fullLabel, y=value, fill=name))
 print("Writting Summary table for structural categories. Only unique UJC...")
 write.table(df_summary.2, paste0(output_directory, "/", output_name, ".summary_table_UJC_SC.csv" ), sep=",", quote = FALSE, row.names = FALSE, col.names = TRUE)
 
-df_summary.2 <- merge(df_summary.2, code, by.x="ID", by.y="pipeline")
-melted_summary.2 <- df_summary.2 %>% pivot_longer(c("FSM","ISM","NIC","NNC",
-                                                    "Antisense","Fusion","GenicGenomic","GenicIntron","Intergenic"))
+melted_summary.2 <- melt(df_summary.2, id.vars = "ID")
+melted_summary.2$ID <- factor(melted_summary.2$ID, levels=sorted_pipelines)
+pt1.2 <- ggplot2::ggplot(melted_summary.2, aes(x=ID, y=value, group=variable)) + 
+  geom_line(linetype = "dashed", aes(color=variable)) +
+  geom_point(aes(color=variable)) +
+  mytheme + scale_color_manual(values=cat.palette1, name="Structural Category")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  labs(title = "UJC detected by pipeline",
+       x="", y="Counts UJC")
 
-pt1.2 <- ggplot2::ggplot(melted_summary.2, aes(x=fullLabel, y=value, fill=name)) + 
-  geom_bar(position = "stack", stat="identity") +
-  scale_fill_manual(values =  cat.palette, name="Structural Category") +
-  mytheme +
-  theme( axis.text.x  = element_text(angle = 90)) +
-  ylab("UJC detected") +
-  xlab("Pipelines") 
 
 
 
@@ -1044,81 +1029,109 @@ if (lrgasp == TRUE){
   #table3 <- tableGrob(sirv.metrics, theme = table_theme)
   #t3 <- gTree(children=gList(table3, title3))
   
-  print("Writting SIRVs metrics table...")
-  write.table(sirv.metrics, paste0(output_directory, "/", output_name, ".SIRVS_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
+  print("Writting simulation metrics table...")
+  write.table(totsim.metrics, paste0(output_directory, "/", output_name, ".totsim_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
   
-  metrics_SIRVs <- t(sirv.metrics)
-  metrics_names <- colnames(metrics_SIRVs)
-  metrics_SIRVs <- merge(metrics_SIRVs, code, by.x=0 , by.y="pipeline")
-  colnames(metrics_SIRVs) <- make.names(colnames(metrics_SIRVs))
-
+  melted_t3 <- melt(as.matrix(totsim.metrics), id.vars = "X1")
+  colnames(melted_t3) <- c("Metric", "Pipelines", "value")
+  melted_t3$value <- as.numeric(melted_t3$value)
+  melted_t3$Pipelines <- factor(melted_t3$Pipelines, levels=sorted_pipelines)
   pt3 <- list()
-  for (i in 1:length(metrics_names)) {
-    metric <- make.names(metrics_names[i])
-    metric_n <- metrics_names[i]
-    metrics_SIRVs[,metric] <- as.numeric(metrics_SIRVs[,metric])
-    pt3[[i]] <-ggplot2::ggplot(metrics_SIRVs, aes_string(x="Data_Category", y=metric, color="Platform", shape="Lib_DC")) + 
-      geom_point(position = position_dodge(width = 1), size=3) +
-      mytheme+
-      theme( axis.text.x  = element_text(angle = 90)) +
-      scale_shape_manual(values=c(0,7,1,10,5,9,8,2,14)) +
-      scale_color_manual(values =  c("#BD87BB","#2D7AC0","#D6234A")) +
-      facet_grid(.~ Tool, drop = TRUE) +
-      labs(title = paste0("SIRVs:\n\n", metric_n),
-           x="Data used", y=metric_n) +
-      theme(legend.position = "top")
+  for (i in 1:length(rownames(totsim.metrics))) {
+    metric <- rownames(totsim.metrics)[i]
+    selected_variable <- melted_t3 %>% filter(Metric==metric)
+    pt3[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+      geom_bar(stat="identity") +
+      geom_text(aes(label=value), hjust=1.1, size=3, angle = 90)+
+      mytheme + 
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+      labs(title = paste0("Evaluation of all simulated transcripts:\n\n", metric),
+           x="", y=metric) +
+      scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
   }
-  if (old_results != TRUE ){
-  print("Writting spliced SIRVs metrics table...")
-  write.table(sirv_spliced.metrics, paste0(output_directory, "/", output_name, ".splicedSIRVS_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
   
-  metrics_splicedSIRVs <- t(sirv_spliced.metrics)
-  metrics_names <- colnames(metrics_splicedSIRVs)
-  metrics_splicedSIRVs <- merge(metrics_splicedSIRVs, code, by.x=0 , by.y="pipeline")
-  colnames(metrics_splicedSIRVs) <- make.names(colnames(metrics_splicedSIRVs))
-  metrics_splicedSIRVs[is.nan.data.frame(metrics_splicedSIRVs)] <- 0
+  print("Writting simulation metrics table GENCODE...")
+  write.table(totsim0.metrics, paste0(output_directory, "/", output_name, ".totsim0_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
+  melted_t3.1 <- melt(as.matrix(totsim0.metrics), id.vars = "X1")
+  colnames(melted_t3.1) <- c("Metric", "Pipelines", "value")
+  melted_t3.1$value <- as.numeric(melted_t3.1$value)
+  melted_t3.1$Pipelines <- factor(melted_t3.1$Pipelines, levels=sorted_pipelines)
   pt3.1 <- list()
-  for (i in 1:length(metrics_names)) {
-    metric <- make.names(metrics_names[i])
-    metric_n <- metrics_names[i]
-    metrics_splicedSIRVs[,metric] <- as.numeric(metrics_splicedSIRVs[,metric])
-    pt3.1[[i]] <-ggplot2::ggplot(metrics_splicedSIRVs, aes_string(x="Data_Category", y=metric, color="Platform", shape="Lib_DC")) + 
-      geom_point(position = position_dodge(width = 1), size=3) +
-      mytheme+
-      theme( axis.text.x  = element_text(angle = 90)) +
-      scale_shape_manual(values=c(0,7,1,10,5,9,8,2,14)) +
-      scale_color_manual(values =  c("#BD87BB","#2D7AC0","#D6234A")) +
-      facet_grid(.~ Tool, drop = TRUE) +
-      labs(title = paste0("Spliced SIRVs:\n\n", metric_n),
-           x="Data used", y=metric_n) +
-      theme(legend.position = "top")
+  for (i in 1:length(rownames(totsim0.metrics))) {
+    metric <- rownames(totsim0.metrics)[i]
+    selected_variable <- melted_t3.1 %>% filter(Metric==metric)
+    pt3.1[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+      geom_bar(stat="identity") +
+      geom_text(aes(label=value), hjust=1.1, size=3, angle = 90)+
+      mytheme + 
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+      labs(title = paste0("Evaluation of GENCODE simulated transcripts:\n\n", metric),
+           x="", y=metric) +
+      scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
   }
   
-  print("Writting unspliced SIRVs metrics table...")
-  write.table(sirv_unspliced.metrics, paste0(output_directory, "/", output_name, ".unsplicedSIRVS_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
-  
-  metrics_unsplicedSIRVs <- t(sirv_unspliced.metrics)
-  metrics_names <- colnames(metrics_unsplicedSIRVs)
-  metrics_unsplicedSIRVs <- merge(metrics_unsplicedSIRVs, code, by.x=0 , by.y="pipeline")
-  colnames(metrics_unsplicedSIRVs) <- make.names(colnames(metrics_unsplicedSIRVs))
-  metrics_unsplicedSIRVs[is.nan.data.frame(metrics_unsplicedSIRVs)] <- 0
+  print("Writting simulation metrics table GENCODE >1TPM...")
+  write.table(totsim1.metrics, paste0(output_directory, "/", output_name, ".totsim1_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
+  melted_t3.2 <- melt(as.matrix(totsim1.metrics), id.vars = "X1")
+  colnames(melted_t3.2) <- c("Metric", "Pipelines", "value")
+  melted_t3.2$value <- as.numeric(melted_t3.2$value)
+  melted_t3.2$Pipelines <- factor(melted_t3.2$Pipelines, levels=sorted_pipelines)
   pt3.2 <- list()
-  for (i in 1:length(metrics_names)) {
-    metric <- make.names(metrics_names[i])
-    metric_n <- metrics_names[i]
-    metrics_unsplicedSIRVs[,metric] <- as.numeric(metrics_unsplicedSIRVs[,metric])
-    pt3.2[[i]] <-ggplot2::ggplot(metrics_unsplicedSIRVs, aes_string(x="Data_Category", y=metric, color="Platform", shape="Lib_DC")) + 
-      geom_point(position = position_dodge(width = 1), size=3) +
-      mytheme+
-      theme( axis.text.x  = element_text(angle = 90)) +
-      scale_shape_manual(values=c(0,7,1,10,5,9,8,2,14)) +
-      scale_color_manual(values =  c("#BD87BB","#2D7AC0","#D6234A")) +
-      facet_grid(.~ Tool, drop = TRUE) +
-      labs(title = paste0("Unspliced SIRVs:\n\n", metric_n),
-           x="Data used", y=metric_n) +
-      theme(legend.position = "top")
+  for (i in 1:length(rownames(totsim1.metrics))) {
+    metric <- rownames(totsim1.metrics)[i]
+    selected_variable <- melted_t3.2 %>% filter(Metric==metric)
+    pt3.2[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+      geom_bar(stat="identity") +
+      geom_text(aes(label=value), hjust=1.1, size=3, angle = 90)+
+      mytheme + 
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+      labs(title = paste0("Evaluation of simulated GENCODE >1TPM:\n\n", metric),
+           x="", y=metric) +
+      scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
   }
+  
+  print("Writting simulation metrics table GENCODE >5TPM...")
+  write.table(totsim5.metrics, paste0(output_directory, "/", output_name, ".totsim5_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
+  melted_t3.3 <- melt(as.matrix(totsim5.metrics), id.vars = "X1")
+  colnames(melted_t3.3) <- c("Metric", "Pipelines", "value")
+  melted_t3.3$value <- as.numeric(melted_t3.3$value)
+  melted_t3.3$Pipelines <- factor(melted_t3.3$Pipelines, levels=sorted_pipelines)
+  pt3.3 <- list()
+  for (i in 1:length(rownames(totsim5.metrics))) {
+    metric <- rownames(totsim5.metrics)[i]
+    selected_variable <- melted_t3.3 %>% filter(Metric==metric)
+    pt3.3[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+      geom_bar(stat="identity") +
+      geom_text(aes(label=value), hjust=1.1, size=3, angle = 90)+
+      mytheme + 
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+      labs(title = paste0("Evaluation of simulated GENCODE >5TPM:\n\n", metric),
+           x="", y=metric) +
+      scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
   }
+  
+  print("Writting simulation metrics table novelty...")
+  write.table(novelsim.metrics, paste0(output_directory, "/", output_name, ".novelsim_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
+  melted_t3.4 <- melt(as.matrix(novelsim.metrics), id.vars = "X1")
+  colnames(melted_t3.4) <- c("Metric", "Pipelines", "value")
+  melted_t3.4$value <- as.numeric(melted_t3.4$value)
+  melted_t3.4$Pipelines <- factor(melted_t3.4$Pipelines, levels=sorted_pipelines)
+  pt3.4 <- list()
+  for (i in 1:length(rownames(novelsim.metrics))) {
+    metric <- rownames(novelsim.metrics)[i]
+    selected_variable <- melted_t3.4 %>% filter(Metric==metric)
+    pt3.4[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+      geom_bar(stat="identity") +
+      geom_text(aes(label=value), hjust=1.1, size=3, angle = 90)+
+      mytheme + 
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+      labs(title = paste0("Evaluation of simulated novelty:\n\n", metric),
+           x="", y=metric) +
+      scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
+  }
+  
+  
+    
   ## FSM
   #title4.1 <- grid::textGrob("Table 4.1 FSM metrics comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
   #table4.1 <- tableGrob(fsm.metrics, theme = table_theme)
@@ -1127,65 +1140,58 @@ if (lrgasp == TRUE){
   print("Writting FSMs metrics table...")
   write.table(fsm.metrics, paste0(output_directory, "/", output_name, ".FSM_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
   
-  metrics_FSM <- t(fsm.metrics)
-  metrics_names <- colnames(metrics_FSM)
-  metrics_FSM <- merge(metrics_FSM, code, by.x=0 , by.y="pipeline")
-  colnames(metrics_FSM) <- make.names(colnames(metrics_FSM))
-  
+  melted_t4.1 <- melt(as.matrix(fsm.metrics), id.vars = c("X1","X2"))
+  colnames(melted_t4.1) <- c("Metric", "Pipelines", "value")
+  melted_t4.1$value <- as.numeric(melted_t4.1$value)
+  melted_t4.1$Pipelines <- factor(melted_t4.1$Pipelines, levels=sorted_pipelines)
   pt4.1 <- list()
-  for (i in 1:length(metrics_names)) {
-    metric <- make.names(metrics_names[i])
-    metric_n <- metrics_names[i]
-    metrics_FSM[,metric] <- as.numeric(metrics_FSM[,metric])
-    if (metric_n != "Reference redundancy Level"){
-    pt4.1[[i]] <-ggplot2::ggplot(metrics_FSM, aes_string(x="Data_Category", y=metric, color="Platform", shape="Lib_DC")) + 
-      geom_point(position = position_dodge(width = 1), size=3) +
-      mytheme+
-      theme( axis.text.x  = element_text(angle = 90)) +
-      scale_shape_manual(values=c(0,7,1,10,5,9,8,2,14)) +
-      scale_color_manual(values =  c("#BD87BB","#2D7AC0","#D6234A")) +
-      facet_grid(.~ Tool, drop = TRUE) +
-      labs(title = paste0("FSM:\n\n", metric_n),
-           x="Data used", y="Count") +
-      theme(legend.position = "top")
+  for (i in 1:length(rownames(fsm.metrics))) {
+    metric <- rownames(fsm.metrics)[i]
+    selected_variable <- melted_t4.1 %>% filter(Metric==metric)
+    if (metric != "Reference redundancy Level"){
+      pt4.1[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+        geom_bar(stat="identity") +
+        geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
+        mytheme + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+        labs(title = paste0("FSM:\n\n", metric),
+             x="", y="Count") +
+        scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
     }else{
-      pt4.1[[i]] <-ggplot2::ggplot(metrics_FSM, aes_string(x="Data_Category", y=metric, color="Platform", shape="Lib_DC")) + 
-        geom_point(position = position_dodge(width = 1), size=3) +
-        mytheme+
-        theme( axis.text.x  = element_text(angle = 90)) +
-        scale_shape_manual(values=c(0,7,1,10,5,9,8,2,14)) +
-        scale_color_manual(values =  c("#BD87BB","#2D7AC0","#D6234A")) +
-        facet_grid(.~ Tool, drop = TRUE) +
-        labs(title = paste0("FSM:\n\n", metric_n),
-             x="Data used", y="Redundancy level") +
-        theme(legend.position = "top")
+      pt4.1[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+        geom_bar(stat="identity") +
+        geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
+        mytheme + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+        labs(title = paste0("FSM:\n\n", metric),
+             x="", y="Redundancy level") +
+        scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
     }
   }
+  # FSM perc
+  #title4.2 <- grid::textGrob("Table 4.2 FSM metrics percentages comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
+  #table4.2 <- tableGrob(fsm.metrics_perc, theme = table_theme)
+  #t4.2 <- gTree(children=gList(table4.2, title4.2))
   
   print("Writting FSMs metrics table (%)...")
   write.table(fsm.metrics_perc, paste0(output_directory, "/", output_name, ".FSM_metrics_perc.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
   
-  metrics_FSM_perc <- t(fsm.metrics_perc)
-  metrics_names <- colnames(metrics_FSM_perc)
-  metrics_names <- metrics_names[-c(1,12)]
-  metrics_FSM_perc <- merge(metrics_FSM_perc, code, by.x=0 , by.y="pipeline")
-  colnames(metrics_FSM_perc) <- make.names(colnames(metrics_FSM_perc))
-  
+  melted_t4.2 <- melt(as.matrix(fsm.metrics_perc), id.vars = c("X1","X2"))
+  colnames(melted_t4.2) <- c("Metric", "Pipelines", "value")
+  melted_t4.2$value <- as.numeric(melted_t4.2$value)
+  melted_t4.2$Pipelines <- factor(melted_t4.2$Pipelines, levels=sorted_pipelines)
   pt4.2 <- list()
-  for (i in 1:length(metrics_names)) {
-    metric <- make.names(metrics_names[i])
-    metric_n <- metrics_names[i]
-    metrics_FSM_perc[,metric] <- as.numeric(metrics_FSM_perc[,metric])
-    pt4.2[[i]] <-ggplot2::ggplot(metrics_FSM_perc, aes_string(x="Data_Category", y=metric, color="Platform", shape="Lib_DC")) + 
-        geom_point(position = position_dodge(width = 1), size=3) +
-        mytheme+
-        theme( axis.text.x  = element_text(angle = 90)) +
-        scale_shape_manual(values=c(0,7,1,10,5,9,8,2,14)) +
-        scale_color_manual(values =  c("#BD87BB","#2D7AC0","#D6234A")) +
-        facet_grid(.~ Tool, drop = TRUE) +
-        labs(title = paste0("FSM:\n\n", metric_n),
-             x="Data used", y="Percentage (%)") +
-        theme(legend.position = "top") + ylim(0,100)
+  for (i in 1:length(rownames(fsm.metrics_perc))) {
+    metric <- rownames(fsm.metrics_perc)[i]
+    selected_variable <- melted_t4.2 %>% filter(Metric==metric)
+    pt4.2[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+      geom_bar(stat="identity") +
+      geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
+      mytheme + 
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+      labs(title = paste0("FSM:\n\n", metric),
+           x="", y="Percentage (%)") +
+      scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
   
   
@@ -1197,42 +1203,34 @@ if (lrgasp == TRUE){
   print("Writting ISMs metrics table...")
   write.table(ism.metrics, paste0(output_directory, "/", output_name, ".ISM_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
   
-  metrics_ISM <- t(ism.metrics)
-  metrics_names <- colnames(metrics_ISM)
-  metrics_ISM <- merge(metrics_ISM, code, by.x=0 , by.y="pipeline")
-  colnames(metrics_ISM) <- make.names(colnames(metrics_ISM))
-  
+  melted_t5.1 <- melt(as.matrix(ism.metrics), id.vars = c("X1","X2"))
+  colnames(melted_t5.1) <- c("Metric", "Pipelines", "value")
+  melted_t5.1$value <- as.numeric(melted_t5.1$value)
+  melted_t5.1$Pipelines <- factor(melted_t5.1$Pipelines, levels=sorted_pipelines)
   pt5.1 <- list()
-  for (i in 1:length(metrics_names)) {
-    metric <- make.names(metrics_names[i])
-    metric_n <- metrics_names[i]
-    metrics_ISM[,metric] <- as.numeric(metrics_ISM[,metric])
-    if (metric_n != "Reference redundancy Level"){
-      pt5.1[[i]] <-ggplot2::ggplot(metrics_ISM, aes_string(x="Data_Category", y=metric, color="Platform", shape="Lib_DC")) + 
-        geom_point(position = position_dodge(width = 1), size=3) +
-        mytheme+
-        theme( axis.text.x  = element_text(angle = 90)) +
-        scale_shape_manual(values=c(0,7,1,10,5,9,8,2,14)) +
-        scale_color_manual(values =  c("#BD87BB","#2D7AC0","#D6234A")) +
-        facet_grid(.~ Tool, drop = TRUE) +
-        labs(title = paste0("ISM:\n\n", metric_n),
-             x="Data used", y="Count") +
-        theme(legend.position = "top")
+  for (i in 1:length(rownames(ism.metrics))) {
+    metric <- rownames(ism.metrics)[i]
+    selected_variable <- melted_t5.1 %>% filter(Metric==metric)
+    if (metric != "Reference redundancy Level"){
+      pt5.1[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+        geom_bar(stat="identity") +
+        geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
+        mytheme + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+        labs(title = paste0("ISM:\n\n", metric),
+             x="", y="Count") +
+        scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
     }else{
-      pt5.1[[i]] <-ggplot2::ggplot(metrics_ISM, aes_string(x="Data_Category", y=metric, color="Platform", shape="Lib_DC")) + 
-        geom_point(position = position_dodge(width = 1), size=3) +
-        mytheme+
-        theme( axis.text.x  = element_text(angle = 90)) +
-        scale_shape_manual(values=c(0,7,1,10,5,9,8,2,14)) +
-        scale_color_manual(values =  c("#BD87BB","#2D7AC0","#D6234A")) +
-        facet_grid(.~ Tool, drop = TRUE) +
-        labs(title = paste0("ISM:\n\n", metric_n),
-             x="Data used", y="Redundancy level") +
-        theme(legend.position = "top")
+      pt4.1[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+        geom_bar(stat="identity") +
+        geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
+        mytheme + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+        labs(title = paste0("ISM:\n\n", metric),
+             x="", y="Redundancy level") +
+        scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
     }
-  }
-  
-
+ }
   # ISM perc
   #title5.2 <- grid::textGrob("Table 5.2 ISM metrics percentages comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
   #table5.2 <- tableGrob(ism.metrics_perc, theme = table_theme)
@@ -1241,27 +1239,22 @@ if (lrgasp == TRUE){
   print("Writting ISMs metrics table (%)...")
   write.table(ism.metrics_perc, paste0(output_directory, "/", output_name, ".ISM_metrics_perc.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
   
-  metrics_ISM_perc <- t(ism.metrics_perc)
-  metrics_names <- colnames(metrics_ISM_perc)
-  metrics_names <- metrics_names[-c(1,12)]
-  metrics_ISM_perc <- merge(metrics_ISM_perc, code, by.x=0 , by.y="pipeline")
-  colnames(metrics_ISM_perc) <- make.names(colnames(metrics_ISM_perc))
-  
+  melted_t5.2 <- melt(as.matrix(ism.metrics_perc), id.vars = c("X1","X2"))
+  colnames(melted_t5.2) <- c("Metric", "Pipelines", "value")
+  melted_t5.2$value <- as.numeric(melted_t5.2$value)
+  melted_t5.2$Pipelines <- factor(melted_t5.2$Pipelines, levels=sorted_pipelines)
   pt5.2 <- list()
-  for (i in 1:length(metrics_names)) {
-    metric <- make.names(metrics_names[i])
-    metric_n <- metrics_names[i]
-    metrics_ISM_perc[,metric] <- as.numeric(metrics_ISM_perc[,metric])
-    pt5.2[[i]] <-ggplot2::ggplot(metrics_ISM_perc, aes_string(x="Data_Category", y=metric, color="Platform", shape="Lib_DC")) + 
-      geom_point(position = position_dodge(width = 1), size=3) +
-      mytheme+
-      theme( axis.text.x  = element_text(angle = 90)) +
-      scale_shape_manual(values=c(0,7,1,10,5,9,8,2,14)) +
-      scale_color_manual(values =  c("#BD87BB","#2D7AC0","#D6234A")) +
-      facet_grid(.~ Tool, drop = TRUE) +
-      labs(title = paste0("ISM:\n\n", metric_n),
-           x="Data used", y="Percentage (%)") +
-      theme(legend.position = "top") + ylim(0,100)
+  for (i in 1:length(rownames(ism.metrics_perc))) {
+    metric <- rownames(ism.metrics_perc)[i]
+    selected_variable <- melted_t5.2 %>% filter(Metric==metric)
+    pt5.2[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+      geom_bar(stat="identity") +
+      geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
+      mytheme + 
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+      labs(title = paste0("ISM:\n\n", metric),
+           x="", y="Percentage (%)")+
+      scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
 
   ## NIC
@@ -1272,29 +1265,23 @@ if (lrgasp == TRUE){
   print("Writting NICs metrics table...")
   write.table(nic.metrics, paste0(output_directory, "/", output_name, ".NIC_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
   
-  metrics_NIC <- t(nic.metrics)
-  metrics_names <- colnames(metrics_NIC)
-  metrics_NIC <- merge(metrics_NIC, code, by.x=0 , by.y="pipeline")
-  colnames(metrics_NIC) <- make.names(colnames(metrics_NIC))
-  
+  melted_t6.1 <- melt(as.matrix(nic.metrics), id.vars = c("X1","X2"))
+  colnames(melted_t6.1) <- c("Metric", "Pipelines", "value")
+  melted_t6.1$value <- as.numeric(melted_t6.1$value)
+  melted_t6.1$Pipelines <- factor(melted_t6.1$Pipelines, levels=sorted_pipelines)
   pt6.1 <- list()
-  for (i in 1:length(metrics_names)) {
-    metric <- make.names(metrics_names[i])
-    metric_n <- metrics_names[i]
-    metrics_NIC[,metric] <- as.numeric(metrics_NIC[,metric])
-    
-    pt6.1[[i]] <-ggplot2::ggplot(metrics_NIC, aes_string(x="Data_Category", y=metric, color="Platform", shape="Lib_DC")) + 
-        geom_point(position = position_dodge(width = 1), size=3) +
-        mytheme+
-        theme( axis.text.x  = element_text(angle = 90)) +
-        scale_shape_manual(values=c(0,7,1,10,5,9,8,2,14)) +
-        scale_color_manual(values =  c("#BD87BB","#2D7AC0","#D6234A")) +
-        facet_grid(.~ Tool, drop = TRUE) +
-        labs(title = paste0("NIC:\n\n", metric_n),
-             x="Data used", y="Count") +
-        theme(legend.position = "top")
+  for (i in 1:length(rownames(nic.metrics))) {
+    metric <- rownames(nic.metrics)[i]
+    selected_variable <- melted_t6.1 %>% filter(Metric==metric)
+    pt6.1[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+      geom_bar(stat="identity") +
+      geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
+      mytheme + 
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+      labs(title = paste0("NIC:\n\n", metric),
+           x="", y="Count")+
+      scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
-  
   # NIC perc
   #title6.2 <- grid::textGrob("Table 6.2 NIC metrics percentages comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
   #table6.2 <- tableGrob(nic.metrics_perc, theme = table_theme)
@@ -1303,30 +1290,24 @@ if (lrgasp == TRUE){
   print("Writting NICs metrics table (%)...")
   write.table(nic.metrics_perc, paste0(output_directory, "/", output_name, ".NIC_metrics_perc.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
   
-  metrics_NIC_perc <- t(nic.metrics_perc)
-  metrics_names <- colnames(metrics_NIC_perc)
-  metrics_names <- metrics_names[-1]
-  metrics_NIC_perc <- merge(metrics_NIC_perc, code, by.x=0 , by.y="pipeline")
-  colnames(metrics_NIC_perc) <- make.names(colnames(metrics_NIC_perc))
-  
+  melted_t6.2 <- melt(as.matrix(nic.metrics_perc), id.vars = c("X1","X2"))
+  colnames(melted_t6.2) <- c("Metric", "Pipelines", "value")
+  melted_t6.2$value <- as.numeric(melted_t6.2$value)
+  melted_t6.2$Pipelines <- factor(melted_t6.2$Pipelines, levels=sorted_pipelines)
   pt6.2 <- list()
-  for (i in 1:length(metrics_names)) {
-    metric <- make.names(metrics_names[i])
-    metric_n <- metrics_names[i]
-    metrics_NIC_perc[,metric] <- as.numeric(metrics_NIC_perc[,metric])
-    
-    pt6.2[[i]] <-ggplot2::ggplot(metrics_NIC_perc, aes_string(x="Data_Category", y=metric, color="Platform", shape="Lib_DC")) + 
-      geom_point(position = position_dodge(width = 1), size=3) +
-      mytheme+
-      theme( axis.text.x  = element_text(angle = 90)) +
-      scale_shape_manual(values=c(0,7,1,10,5,9,8,2,14)) +
-      scale_color_manual(values =  c("#BD87BB","#2D7AC0","#D6234A")) +
-      facet_grid(.~ Tool, drop = TRUE) +
-      labs(title = paste0("NIC:\n\n", metric_n),
-           x="Data used", y="Percentage (%)") +
-      theme(legend.position = "top") + ylim(0,100)
+  for (i in 1:length(rownames(nic.metrics_perc))) {
+    metric <- rownames(nic.metrics_perc)[i]
+    selected_variable <- melted_t6.2 %>% filter(Metric==metric)
+    pt6.2[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+      geom_bar(stat="identity") +
+      geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
+      mytheme + 
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+      labs(title = paste0("NIC:\n\n", metric),
+           x="", y="Percentage (%)")+
+      scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
-
+  
   ## NNC
   #title7.1 <- grid::textGrob("Table 7.1 NNC metrics comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
   #table7.1 <- tableGrob(nnc.metrics, theme = table_theme)
@@ -1335,29 +1316,23 @@ if (lrgasp == TRUE){
   print("Writting NNCs metrics table...")
   write.table(nnc.metrics, paste0(output_directory, "/", output_name, ".NNC_metrics.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
   
-  metrics_NNC <- t(nnc.metrics)
-  metrics_names <- colnames(metrics_NNC)
-  metrics_NNC <- merge(metrics_NNC, code, by.x=0 , by.y="pipeline")
-  colnames(metrics_NNC) <- make.names(colnames(metrics_NNC))
-  
+  melted_t7.1 <- melt(as.matrix(nnc.metrics), id.vars = c("X1","X2"))
+  colnames(melted_t7.1) <- c("Metric", "Pipelines", "value")
+  melted_t7.1$value <- as.numeric(melted_t7.1$value)
+  melted_t7.1$Pipelines <- factor(melted_t7.1$Pipelines, levels=sorted_pipelines)
   pt7.1 <- list()
-  for (i in 1:length(metrics_names)) {
-    metric <- make.names(metrics_names[i])
-    metric_n <- metrics_names[i]
-    metrics_NNC[,metric] <- as.numeric(metrics_NNC[,metric])
-    
-    pt7.1[[i]] <-ggplot2::ggplot(metrics_NNC, aes_string(x="Data_Category", y=metric, color="Platform", shape="Lib_DC")) + 
-      geom_point(position = position_dodge(width = 1), size=3) +
-      mytheme+
-      theme( axis.text.x  = element_text(angle = 90)) +
-      scale_shape_manual(values=c(0,7,1,10,5,9,8,2,14)) +
-      scale_color_manual(values =  c("#BD87BB","#2D7AC0","#D6234A")) +
-      facet_grid(.~ Tool, drop = TRUE) +
-      labs(title = paste0("NNC:\n\n", metric_n),
-           x="Data used", y="Count") +
-      theme(legend.position = "top")
+  for (i in 1:length(rownames(nnc.metrics))) {
+    metric <- rownames(nnc.metrics)[i]
+    selected_variable <- melted_t7.1 %>% filter(Metric==metric)
+    pt7.1[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+      geom_bar(stat="identity") +
+      geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
+      mytheme +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+      labs(title = paste0("NNC:\n\n ", metric),
+           x="", y="Count")+
+        scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
-
   # NNC perc
   #title7.2 <- grid::textGrob("Table 7.2 NNC metrics percentages comparison\n", gp=gpar(fontface="italic", fontsize=17), vjust = -3.2)
   #table7.2 <- tableGrob(nnc.metrics_perc, theme = table_theme)
@@ -1366,28 +1341,25 @@ if (lrgasp == TRUE){
   print("Writting NNC metrics table (%)...")
   write.table(nnc.metrics_perc, paste0(output_directory, "/", output_name, ".NNC_metrics_perc.csv" ), sep=",", quote = FALSE, row.names = TRUE, col.names = TRUE)
   
-  metrics_NNC_perc <- t(nnc.metrics_perc)
-  metrics_names <- colnames(metrics_NNC_perc)
-  metrics_names <- metrics_names[-1]
-  metrics_NNC_perc <- merge(metrics_NNC_perc, code, by.x=0 , by.y="pipeline")
-  colnames(metrics_NNC_perc) <- make.names(colnames(metrics_NNC_perc))
-  
+  melted_t7.2 <- melt(as.matrix(nnc.metrics_perc), id.vars = c("X1","X2"))
+  colnames(melted_t7.2) <- c("Metric", "Pipelines", "value")
+  melted_t7.2$value <- as.numeric(melted_t7.2$value)
+  melted_t7.2$Pipelines <- factor(melted_t7.2$Pipelines, levels=sorted_pipelines)
   pt7.2 <- list()
-  for (i in 1:length(metrics_names)) {
-    metric <- make.names(metrics_names[i])
-    metric_n <- metrics_names[i]
-    metrics_NNC_perc[,metric] <- as.numeric(metrics_NNC_perc[,metric])
-    pt7.2[[i]] <-ggplot2::ggplot(metrics_NNC_perc, aes_string(x="Data_Category", y=metric, color="Platform", shape="Lib_DC")) + 
-      geom_point(position = position_dodge(width = 1), size=3) +
-      mytheme+
-      theme( axis.text.x  = element_text(angle = 90)) +
-      scale_shape_manual(values=c(0,7,1,10,5,9,8,2,14)) +
-      scale_color_manual(values =  c("#BD87BB","#2D7AC0","#D6234A")) +
-      facet_grid(.~ Tool, drop = TRUE) +
-      labs(title = paste0("NNC:\n\n", metric_n),
-           x="Data used", y="Percentage (%)") +
-      theme(legend.position = "top") + ylim(0,100)
+  for (i in 1:length(rownames(nnc.metrics_perc))) {
+    metric <- rownames(nnc.metrics_perc)[i]
+    selected_variable <- melted_t7.2 %>% filter(Metric==metric)
+    pt7.2[[i]] <-ggplot2::ggplot(selected_variable, aes(x=Pipelines, y=value, fill=Pipelines)) + 
+      geom_bar(stat="identity") +
+      geom_text(aes(label=value), hjust=1.1, size=3, angle=90)+
+      mytheme + 
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+      labs(title = paste0("NNC:\n\n", metric),
+           x="", y="Percentage (%)")+
+      scale_fill_conesa(palette = "complete")+ theme(legend.position = "none")
   }
+  
+  
   
 }
 
@@ -1395,20 +1367,19 @@ if (lrgasp == TRUE){
 # -------------------- 
 # PLOT 1: gene characterization
 # PLOT 1.1: isoforms per gene
-isoPerGene <- merge(isoPerGene, code, by.x="sample", by.y="pipeline")
+isoPerGene$sample <- factor(isoPerGene$sample, levels=sorted_pipelines)
 
-p1.1 <- ggplot(isoPerGene, aes(fill=number, y=countpergene, x=fullLabel)) +
+p1.1 <- ggplot(isoPerGene, aes(fill=number, y=countpergene, x=sample)) +
   geom_bar(position = "fill", stat = "identity") +
   mytheme + scale_fill_manual(values = myPalette, name="Num. isoforms per gene") + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   labs(title = "Number of isoforms per gene",
-       x="", y="Percentage of genes") 
-  
+       x="", y="Percentage of genes")
 
 # PLOT 1.2: exon structure
-exonstructure <- merge(exonstructure, code, by.x="sample", by.y="pipeline")
+exonstructure$sample <- factor(exonstructure$sample, levels=sorted_pipelines)
 
-p1.2 <- ggplot(exonstructure, aes(fill=category, y=exonstructure, x=fullLabel)) +
+p1.2 <- ggplot(exonstructure, aes(fill=category, y=exonstructure, x=sample)) +
   geom_bar(position = "fill", stat = "identity") +
   scale_fill_manual(values = myPalette, name="") + mytheme +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + 
@@ -1416,9 +1387,8 @@ p1.2 <- ggplot(exonstructure, aes(fill=category, y=exonstructure, x=fullLabel)) 
 
 # PLOT 2: structural category distribution
 
-df_SC <- merge(df_SC, code, by.x="ID", by.y="pipeline")
-
-p2 <- ggplot(df_SC, aes(fill=SC, y=value, x=fullLabel)) +
+df_SC$ID <- factor(df_SC$ID, levels=sorted_pipelines)
+p2 <- ggplot(df_SC, aes(fill=SC, y=value, x=ID)) +
   geom_bar(position = "fill", stat = "identity") +
   scale_fill_manual(values = cat.palette, name="Structural Category") + mytheme +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
@@ -1427,166 +1397,115 @@ p2 <- ggplot(df_SC, aes(fill=SC, y=value, x=fullLabel)) +
 
 # PLOT 4: distance to TSS
 for (i in 1:length(dist.list)){
-  dist.list[[i]] <- merge( dist.list[[i]], code, by.x="sample", by.y="pipeline")
+  dist.list[[i]]$sample <- factor(dist.list[[i]]$sample, levels=sorted_pipelines)
 }
-
-p4.1 <- ggplot(dist.list[[1]], aes(x="", y=(dist*-1), fill=Label)) + 
-  geom_violin() +
+p4.1 <- ggplot(dist.list[[1]], aes(x=sample, y=(dist*-1))) + 
+  geom_violin(alpha=0.7, aes(fill=sample)) +
+  geom_boxplot(width=0.05, outlier.shape = NA) +
   mytheme +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   labs(title = "Distance to TSS of FSM isoforms", x="", y="Distance (bp)") +
   ylim(c(-200,200))  +
-  facet_wrap(.~ Tool, drop = TRUE) +
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom") 
+  scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
-p4.1.1 <- ggplot(dist.list[[1]], aes(x="", y=(dist*-1), fill=Label)) + 
-  geom_boxplot(outlier.size = 0.5) +
-  mytheme +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-  labs(title = "Distance to TSS of FSM isoforms", x="", y="Distance (bp)") +
-  ylim(c(-200,200))  +
-  facet_wrap(.~ Tool, drop = TRUE) +
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom") 
-  
-p4.2 <- ggplot(dist.list[[2]], aes(x="", y=(dist*-1), fill=Label)) + 
-  geom_violin() +
+p4.2 <- ggplot(dist.list[[2]], aes(x=sample, y=(dist*-1))) + 
+  geom_violin(alpha=0.7, aes(fill=sample)) +
+  geom_boxplot(width=0.05, outlier.shape = NA) +
   mytheme +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   labs(title = "Distance to TSS of ISM isoforms", x="", y="Distance (bp)") +
-  ylim(c(-2000,2000))   +
-  facet_wrap(.~ Tool, drop = TRUE) +
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom") 
-
-p4.2.1 <- ggplot(dist.list[[2]], aes(x="", y=(dist*-1), fill=Label)) + 
-  geom_boxplot(outlier.size = 0.5) +
-  mytheme +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-  labs(title = "Distance to TSS of ISM isoforms", x="", y="Distance (bp)") +
-  ylim(c(-2000,2000))   +
-  facet_wrap(.~ Tool, drop = TRUE) +
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom") 
+  ylim(c(-2000,2000))  +
+  scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
 # PLOT5: distance to TTS
-p5.1 <- ggplot(dist.list[[3]], aes(x="", y=(dist*-1), fill=Label)) + 
-  geom_violin() +
+p5.1 <- ggplot(dist.list[[3]], aes(x=sample, y=(dist*-1))) + 
+  geom_violin(alpha=0.7, aes(fill=sample)) +
+  geom_boxplot(width=0.05, outlier.shape = NA) +
   mytheme +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   labs(title = "Distance to TTS of FSM isoforms", x="", y="Distance (bp)") +
-  ylim(c(-200,200))  +
-  facet_wrap(.~ Tool, drop = TRUE) +
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom") 
+  ylim(c(-200,200)) +
+  scale_fill_conesa(palette = "complete") + theme(legend.position = "none") 
 
-p5.1.1 <- ggplot(dist.list[[3]], aes(x="", y=(dist*-1), fill=Label)) + 
-  geom_boxplot(outlier.size = 0.5) +
-  mytheme +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-  labs(title = "Distance to TTS of FSM isoforms", x="", y="Distance (bp)") +
-  ylim(c(-200,200))  +
-  facet_wrap(.~ Tool, drop = TRUE) +
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom")  
- 
-p5.2 <- ggplot(dist.list[[4]], aes(x="", y=(dist*-1), fill=Label)) + 
-  geom_violin() +
+p5.2 <- ggplot(dist.list[[4]], aes(x=sample, y=(dist*-1))) + 
+  geom_violin(alpha=0.7, aes(fill=sample)) +
+  geom_boxplot(width=0.05, outlier.shape = NA) +
   mytheme +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   labs(title = "Distance to TTS of ISM isoforms", x="", y="Distance (bp)") +
-  ylim(c(-2000,2000))  +
-  facet_wrap(.~ Tool, drop = TRUE) +
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom")
-
-p5.2.1 <- ggplot(dist.list[[4]], aes(x="", y=(dist*-1), fill=Label)) + 
-  geom_boxplot(outlier.size = 0.5) +
-  mytheme +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-  labs(title = "Distance to TTS of ISM isoforms", x="", y="Distance (bp)") +
-  ylim(c(-2000,2000))  +
-  facet_wrap(.~ Tool, drop = TRUE) +
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom")
-
+  ylim(c(-2000,2000)) +
+  scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
 # PLOT 6: distance to CAGE peak
-p6.1 <- ggplot(dist.list[[5]], aes(x="", y=(dist*-1), fill=Label)) + 
-  geom_violin() +
+p6.1 <- ggplot(dist.list[[5]], aes(x=sample, y=(dist*-1))) + 
+  geom_violin(alpha=0.7, aes(fill=sample)) +
+  geom_boxplot(width=0.05, outlier.shape = NA) +
   mytheme +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   ylim(c(-1000,200))+
-  facet_wrap(.~ Tool, drop = TRUE) +
   labs(title = "Distance to closest CAGE peak (FSM only)", y="Distance (bp)", x="") +
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom") 
+  scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
-p6.1.1 <- ggplot(dist.list[[5]], aes(x="", y=(dist*-1), fill=Label)) + 
-  geom_boxplot(outlier.size = 0.5) +
+p6.2 <- ggplot(dist.list[[6]], aes(x=sample, y=(dist*-1))) + 
+  geom_violin(alpha=0.7, aes(fill=sample)) +
+  geom_boxplot(width=0.05, outlier.shape = NA) +
   mytheme +
+  ylim(c(1000,-200))+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-  ylim(c(-1000,200))+
-  facet_wrap(.~ Tool, drop = TRUE) +
-  labs(title = "Distance to closest CAGE peak (FSM only)", y="Distance (bp)", x="") +
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom") 
-
-p6.2 <- ggplot(dist.list[[6]], aes(x="", y=(dist*-1), fill=Label)) + 
-  geom_violin() +
-  mytheme +
-  ylim(c(-1000,200))+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))  +
-  facet_wrap(.~ Tool, drop = TRUE) +
   labs(title = "Distance to closest CAGE peak (ISM only)", y="Distance (bp)", x="") +
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom") 
+  scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
-p6.2.1 <- ggplot(dist.list[[6]], aes(x="", y=(dist*-1), fill=Label)) + 
-  geom_boxplot(outlier.size = 0.5) +
-  mytheme +
-  ylim(c(-1000,200))+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))  +
-  facet_wrap(.~ Tool, drop = TRUE) +
-  labs(title = "Distance to closest CAGE peak (ISM only)", y="Distance (bp)", x="") +
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom") 
 
 # PLOT 7: bad quality features
 # PLOT 7.1: RT-switching
-FSM.RT <- merge( FSM.RT, code, by.x="sample", by.y="pipeline")
-
-p7.1.1 <- ggplot(FSM.RT, aes(x=fullLabel, y=FSM, fill=Library)) + geom_bar(stat="identity") +
+FSM.RT$sample <- factor(FSM.RT$sample, levels=sorted_pipelines)
+p7.1.1 <- ggplot(FSM.RT, aes(x=sample, y=FSM, fill=sample)) + geom_bar(stat="identity") +
   mytheme +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   labs(title = "RT-Switching incidence on FSM isoforms", x="", y="Percentage of isoforms") +
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom")
+  scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
-NIC.RT <- merge( NIC.RT, code, by.x="sample", by.y="pipeline")
-p7.1.2 <- ggplot(NIC.RT, aes(x=fullLabel, y=NIC, fill=Library)) + geom_bar(stat="identity") +
+NIC.RT$sample <- factor(NIC.RT$sample, levels=sorted_pipelines)
+p7.1.2 <- ggplot(NIC.RT, aes(x=sample, y=NIC, fill=sample)) + geom_bar(stat="identity") +
   mytheme +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   labs(title = "RT-Switching incidence on NIC isoforms", x="", y="Percentage of isoforms")+
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom")
+  scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
-NNC.RT <- merge( NNC.RT, code, by.x="sample", by.y="pipeline")
-p7.1.3 <- ggplot(NNC.RT, aes(x=fullLabel, y=NNC, fill=Library)) + 
-  geom_bar(stat="identity") +
+NNC.RT$sample <- factor(NNC.RT$sample, levels=sorted_pipelines)
+p7.1.3 <- ggplot(NNC.RT, aes(x=sample, y=NNC, fill=sample)) + geom_bar(stat="identity") +
   mytheme +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   labs(title = "RT-Switching incidence on NNC isoforms", x="", y="Percentage of isoforms")+ 
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom")
+  scale_fill_conesa(palette = "complete") + theme(legend.position = "none")
 
 # PLOT 8: Length Distribution
-p8 <- ggplot(length_distribution, aes(x="", y=log10(length), fill=Label))+
-  geom_violin() +
-  mytheme +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))  +
-  labs(title = "Transcript length distribution", x="", y="log(Length (bp))") + 
-  facet_wrap(.~ Tool, drop = TRUE) +
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom") 
+if (max(length_distribution$length)>30000){
+  p8 <- ggplot(length_distribution, aes(x=experiment_id, y=length))+
+    geom_violin(alpha=0.7 , aes(fill=experiment_id)) +
+    geom_boxplot(width=0.05, outlier.shape = NA) +
+    mytheme +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+    ylim(c(0,30000)) +
+    labs(title = "Transcript length distribution", x="", y="Length (bp)") + 
+    scale_fill_conesa(palette = "complete") + theme(legend.position = "none") 
+  
+}else{
+  p8 <- ggplot(length_distribution, aes(x=experiment_id, y=length))+
+    geom_violin(alpha=0.7 , aes(fill=experiment_id)) +
+    geom_boxplot(width=0.05, outlier.shape = NA) +
+    mytheme +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+    labs(title = "Transcript length distribution", x="", y="Length (bp)") + 
+    scale_fill_conesa(palette = "complete") + theme(legend.position = "none") 
+}
 
-p8.1 <- ggplot(length_distribution, aes(x="", y=log10(length), fill=Label))+
-  geom_boxplot(outlier.size = 0.5) +
-  mytheme +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))  +
-  labs(title = "Transcript length distribution", x="", y="log(Length (bp))") + 
-  facet_wrap(.~ Tool, drop = TRUE) +
-  scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom") 
 
-#if (max(length_distribution$length)>30000){
-#  p8 = p8 + ylim(c(0,30000)) 
-#  p8.1 = p8.1 + ylim(c(0,30000)) 
-#}
+# PLOT 9: Jaccard Index
+
+jac_index_mat <- get_jaccard_matrix(pa_table_sum, as.character(code$pipeline))
+
+#mean_jac <- jac_index_mat[lower.tri(jac_index_mat, diag = F)] %>% median()
 
 
 # PLOT 10: UpSet plot
@@ -1715,24 +1634,22 @@ if (TSS_TTS_coord == TRUE) {
   # PLOT 13: TSS standard deviation per pipeline
   
   a <- bind_rows(res$classifications, .id = "experiment_id")
-  a <- merge( a, code, by.x="experiment_id", by.y="pipeline")
-  p13 <- ggplot(a, aes(x="", y=sdTSS, fill=Label))+
-    geom_violin() +
+  a$experiment_id <- factor(a$experiment_id, levels=sorted_pipelines)
+  p13 <- ggplot(a, aes(y=experiment_id, x=(sdTSS))) +
+    geom_violin(alpha=0.7, aes(fill=experiment_id)) +
+    geom_boxplot(width=0.05, outlier.shape = NA) +
     mytheme +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))  +
-    labs(title = "Standard deviation of genomic TSS coordinates", x="", y="SD") + 
-    facet_wrap(.~ Tool, drop = TRUE) +
-    scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom") 
+    labs(title = "Standard deviation of genomic TSS coordinates", x="SD", y="") +
+    scale_fill_conesa(palette = "complete") + theme(legend.position = "none") 
   
   
   # PLOT 14: TTS standard deviation per pipeline
-  p14 <- ggplot(a, aes(x="", y=sdTTS, fill=Label))+
-    geom_violin() +
+  p14 <- ggplot(a, aes(y=experiment_id, x=(sdTTS))) +
+    geom_violin(alpha=0.7, aes(fill=experiment_id)) +
+    geom_boxplot(width=0.05, outlier.shape = NA) +
     mytheme +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))  +
-    labs(title = "Standard deviation of genomic TTS coordinates", x="", y="SD") + 
-    facet_wrap(.~ Tool, drop = TRUE) +
-    scale_fill_conesa(palette = "complete") + theme(legend.position = "bottom") 
+    labs(title = "Standard deviation of genomic TTS coordinates", x="SD", y="") +
+    scale_fill_conesa(palette = "complete") + theme(legend.position = "none") 
   
 }
 
